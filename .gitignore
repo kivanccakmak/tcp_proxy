@@ -1,4 +1,9 @@
 **/*.o
+debug_server
+debug_client
+*.o
+**/*.jpg
+**/*.txt
 **/*.log
-.*log
+
 
