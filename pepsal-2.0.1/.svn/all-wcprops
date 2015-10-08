@@ -1,0 +1,71 @@
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1
+END
+configure.ac
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/configure.ac
+END
+AUTHORS
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/AUTHORS
+END
+INSTALL
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/INSTALL
+END
+ChangeLog
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/ChangeLog
+END
+COPYING
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/COPYING
+END
+iptables-config-example.sh
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/iptables-config-example.sh
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/Makefile.am
+END
+NEWS
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/NEWS
+END
+README
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/README
+END
+bootstrap
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/bootstrap
+END
+ltmain.sh
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/ltmain.sh
+END

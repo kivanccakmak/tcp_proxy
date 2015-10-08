@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src
+END
+syntab.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/syntab.c
+END
+pepbuf.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/pepbuf.c
+END
+pepsal.1
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/pepsal.1
+END
+pep.c
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/pep.c
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/Makefile.am
+END
+pepqueue.c
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/pepqueue.c
+END
+stamp-h1
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/stamp-h1
+END
+hashtable.c
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svnroot/pepsal/!svn/ver/12/tags/release_2.0.1/src/hashtable.c
+END
