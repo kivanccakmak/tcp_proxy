@@ -1,4 +1,5 @@
 **/*.o
+*.pyc
 debug_server
 debug_client
 *.o
