@@ -1,7 +1,9 @@
 **/*.o
 *.pyc
+*.py~
 debug_server
 debug_client
+debug_some
 *.o
 **/*.jpg
 **/*.txt
