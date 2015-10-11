@@ -22,11 +22,6 @@ int main(int argc, char *argv[]){
     fseek(fp, 0L, SEEK_SET);
     read_file(fp, start_byte, block_number, buffer);
     printf("%s\n", buffer);
-    /*memset(buffer, '\0', block_number * BLOCKSIZE);*/
-    /*printf("====\n");*/
-    /*start_byte += strlen(buffer);*/
-    /*read_file(fp, start_byte, block_number, buffer);*/
-    /*printf("%s\n", buffer);*/
     free(buffer);
     fclose(fp);
 }
