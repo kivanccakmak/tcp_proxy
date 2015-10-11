@@ -38,7 +38,7 @@ void execute(char * ip_addr, char * port, char * fname){
     read_file(fp, start_byte, block_number, buffer);
     int sock;
     struct sockaddr_in server;
-    char message[1000] , server_reply[2000];
+    char server_reply[2000];
     
     //Create socket
     sock = socket(AF_INET , SOCK_STREAM , 0);
