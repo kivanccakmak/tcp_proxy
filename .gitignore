@@ -4,6 +4,7 @@
 debug_server
 debug_client
 debug_some
+debug_read
 *.o
 **/*.jpg
 **/*.txt
