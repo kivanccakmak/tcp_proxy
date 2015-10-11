@@ -13,6 +13,7 @@ int main(int argc, char *argv[]){
         printf("ex: %s kivanc.txt 10 100\n", argv[0]); 
         return 2;
     }
+    int file_size;
     char *fname = argv[1];
     int start_byte = atoi(argv[2]);
     int block_number = atoi(argv[3]);
@@ -20,6 +21,10 @@ int main(int argc, char *argv[]){
     memset(buffer, '\0', block_number * BLOCKSIZE);
     FILE *fp;
     fp = fopen(fname, "a+");
+    fseek(fp, 0L, SEEK_END); 
+    file_size = ftell(fp);
+    printf("file size: %d\n", file_size);
+    fseek(fp, 0L, SEEK_SET);
     read_file(fp, start_byte, block_number, buffer);
     printf("%s\n", buffer);
     memset(buffer, '\0', block_number * BLOCKSIZE);
