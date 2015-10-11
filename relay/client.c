@@ -24,18 +24,12 @@ int main(int argc , char *argv[])
         exit(EXIT_SUCCESS);
     }else{
         char * ip_addr;
-        printf("hello 1\n");
         ip_addr = argv[1];
-        /*strcpy(ip_addr, argv[1]);*/
         char * port;
-        printf("hello 2\n");
         port = argv[2];
-        /*strcpy(port, argv[2]);*/
-        printf("hello 3\n");
         execute(ip_addr, port); 
     }
-    /*write_some();*/
-    read_some();
+    /*read_some();*/
     return 0;
 }
 
@@ -43,9 +37,7 @@ void execute(char * ip_addr, char * port){
     int sock;
     struct sockaddr_in server;
     char message[1000] , server_reply[2000];
-    printf("hello\n");
-    printf("ip: %s\n", ip_addr);
-    printf("port: %s\n", port);
+    
     //Create socket
     sock = socket(AF_INET , SOCK_STREAM , 0);
     if (sock == -1)

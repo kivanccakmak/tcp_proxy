@@ -47,7 +47,6 @@ int main(int argc, char *argv[])
         }
         // convert the IP to a string and print it:
         inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
-        //ntop(network to presentation, fills ipstr)
         printf(" %s: %s\n", ipver, ipstr);
     }
     freeaddrinfo(res); // free the linked list
