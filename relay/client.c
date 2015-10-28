@@ -69,7 +69,7 @@ void execute(char * ip_addr, char * port, char * fname){
     int counter = 0;
     while (total_sent < file_size){
         read_file(fp, start_byte, block_number, buffer);
-        /*printf("buffer place: %p\n", buffer);*/
+        printf("buffer place: %p\n", buffer);
         /*printf("%s", buffer);*/
         /*result = send(sock, buffer, strlen(buffer), 0);*/
         result = send(sock, buffer, block_number * BLOCKSIZE, 0);
@@ -92,7 +92,8 @@ void execute(char * ip_addr, char * port, char * fname){
             /*exit(1);*/
         /*}*/
         memset(buffer, '\0', block_number * BLOCKSIZE);
-        buffer = buffer - (block_number * BLOCKSIZE);
+        /*buffer = buffer - (block_number * BLOCKSIZE);*/
     }
+    free(buffer);
     close(sock);
 }
