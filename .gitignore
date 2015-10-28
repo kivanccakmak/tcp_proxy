@@ -1,4 +1,6 @@
 **/*.o
+**/*.out
+**/*.files
 *.pyc
 *.py~
 debug_server
