@@ -2,6 +2,11 @@
 #include "file_read.h"
 
 /*int main(int argc, char *argv[]){*/
+    /**/
+     /**this function reads a local file and prints it */
+     /*file path, start_byte and block amount are assumed to*/
+     /*be argument variables*/
+     /**/ 
     /*if(argc != 4){*/
         /*printf("Wrong Usage\n");*/
         /*printf("Usage: %s filename start_byte block_number\n", argv[0]);*/
@@ -34,6 +39,7 @@ void read_file(FILE *fp, int start_byte, int block_number, char *buffer){
     size_t r_size = BLOCKSIZE;
     size_t nmemb = block_number;
     int fseek_result;
+    fseek(fp, 0L, SEEK_SET);
     fseek_result = fseek(fp, start_byte, SEEK_CUR);
     flen = fread(buffer, r_size, nmemb, fp);  
 }

@@ -39,7 +39,7 @@ void execute(char * ip_addr, char * port, char * fname){
     file_size = ftell(fp);
     fseek(fp, 0L, SEEK_SET); /* initialize fseek pointer */
     printf("file_size: %d\n", file_size);
-    int block_number = 2;
+    int block_number = 1;
     char *buffer = (char *) malloc(block_number * BLOCKSIZE);
     memset(buffer, '\0', block_number * BLOCKSIZE);
 
@@ -69,28 +69,30 @@ void execute(char * ip_addr, char * port, char * fname){
     int counter = 0;
     while (total_sent < file_size){
         read_file(fp, start_byte, block_number, buffer);
-        printf("buffer: %s\n", buffer);
+        /*printf("buffer place: %p\n", buffer);*/
+        /*printf("%s", buffer);*/
         /*result = send(sock, buffer, strlen(buffer), 0);*/
         result = send(sock, buffer, block_number * BLOCKSIZE, 0);
         if(result < 0){
             puts("Send failed");
-            exit(EXIT_SUCCESS);
-            /*return 1;*/
+            exit(1);
         }else{
-            printf("%d \n", result);
+            /*printf("%d \n", result);*/
         }
-        printf("result: %d\n", result);
+        printf("%s", buffer);
+        /*printf("buffer: %s\n", buffer);*/
+        /*printf("result: %d\n", result);*/
+        /*printf("total_sent: %d\n", total_sent);*/
+        /*printf("result: %d\n", result);*/
         total_sent += result;
         start_byte += result;
-        printf("total_sent: %d\n", total_sent);
+        /*printf("total_sent: %d\n", total_sent);*/
         counter += 1;
         /*if (counter == 25){*/
             /*exit(1);*/
         /*}*/
-        free(buffer);
-        buffer = (char *) malloc(block_number * BLOCKSIZE);
         memset(buffer, '\0', block_number * BLOCKSIZE);
-        /*exit(1);*/
+        buffer = buffer - (block_number * BLOCKSIZE);
     }
     close(sock);
 }

@@ -5,7 +5,7 @@
 #include "server_headers.h"
 
 void start_server(char* port);
- 
+
 int main(int argc , char *argv[])
 {
     if(argc != 2){
@@ -43,6 +43,7 @@ void start_server(char * port){
     socklen_t sin_size;
     struct sigaction sa;
     char recv_buf[MAXDATASIZE];
+    memset(recv_buf, 0, sizeof(recv_buf));
     char s[INET6_ADDRSTRLEN];
     int rv;
     int yes = 1;
@@ -92,25 +93,30 @@ void start_server(char * port){
         exit(1);
     }
     printf("server: waiting for connections\n");
+    sin_size = sizeof their_addr;
+
+    new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size); 
+    if (new_fd == -1){
+        perror("accept");
+        exit(1);
+    }
+    inet_ntop(their_addr.ss_family, 
+            get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+
+    printf("server: got connection from %s\n", s);
+    numbytes = 1;
     while(1){
-        sin_size = sizeof their_addr;
-        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size); 
-        if (new_fd == -1){
-            perror("accept");
-            continue;
+        while(numbytes > 0){
+            numbytes = recv(new_fd, recv_buf, MAXDATASIZE-1, 0);
+            printf("%s", recv_buf);
+            /*printf("numbytes: %d\n", numbytes);*/
+            if (numbytes == -1){
+                perror("recv");
+                exit(1);
+            }
+            recv_buf[numbytes] = '\0';
+            memset(recv_buf, '\0', MAXDATASIZE);
         }
-        inet_ntop(their_addr.ss_family, 
-                get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-        printf("server: got connection from %s\n", s);
-        numbytes = recv(new_fd, recv_buf, MAXDATASIZE-1, 0);
-        printf("numbytes: %d\n", numbytes);
-        if (numbytes == -1){
-            perror("recv");
-            exit(1);
-        }
-        recv_buf[numbytes] = '\0';
-        printf("%s", recv_buf);
         /*printf("server: received %s\n", recv_buf);*/
     }
-
 }
