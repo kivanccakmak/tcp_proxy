@@ -32,26 +32,32 @@ void execute(char * ip_addr, char * port, char * fname){
     FILE *fp;
     fp = fopen(fname, "a+");
     int start_byte = 0;
+    int file_size;
+    int total_sent = 0;
+    int result = 0;
+    file_size = fseek(fp, 0L, SEEK_END);/*get file size*/
+    file_size = ftell(fp);
+    fseek(fp, 0L, SEEK_SET); /* initialize fseek pointer */
+    printf("file_size: %d\n", file_size);
     int block_number = 2;
     char *buffer = (char *) malloc(block_number * BLOCKSIZE);
     memset(buffer, '\0', block_number * BLOCKSIZE);
-    read_file(fp, start_byte, block_number, buffer);
-    int sock;
-    struct sockaddr_in server;
-    char server_reply[2000];
-    
+
     //Create socket
+    int sock;
     sock = socket(AF_INET , SOCK_STREAM , 0);
     if (sock == -1)
     {
         printf("Could not create socket");
     }
+
+    struct sockaddr_in server;
     
     puts("Socket created");
     server.sin_addr.s_addr = inet_addr(ip_addr);
     server.sin_family = AF_INET;
     server.sin_port = htons( atoi(port) );
- 
+
     //Connect to remote server
     if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)
     {
@@ -59,26 +65,32 @@ void execute(char * ip_addr, char * port, char * fname){
         exit(EXIT_SUCCESS);
         /*return 1;*/
     }
-     
-    /*puts("Connected\n");*/
 
-    int result = 0;
-    result = send(sock, buffer, strlen(buffer), 0);
-    if(result < 0){
-        puts("Send failed");
-        exit(EXIT_SUCCESS);
-        /*return 1;*/
-    }else{
-        printf("%d \n", result);
+    int counter = 0;
+    while (total_sent < file_size){
+        read_file(fp, start_byte, block_number, buffer);
+        printf("buffer: %s\n", buffer);
+        /*result = send(sock, buffer, strlen(buffer), 0);*/
+        result = send(sock, buffer, block_number * BLOCKSIZE, 0);
+        if(result < 0){
+            puts("Send failed");
+            exit(EXIT_SUCCESS);
+            /*return 1;*/
+        }else{
+            printf("%d \n", result);
+        }
+        printf("result: %d\n", result);
+        total_sent += result;
+        start_byte += result;
+        printf("total_sent: %d\n", total_sent);
+        counter += 1;
+        /*if (counter == 25){*/
+            /*exit(1);*/
+        /*}*/
+        free(buffer);
+        buffer = (char *) malloc(block_number * BLOCKSIZE);
+        memset(buffer, '\0', block_number * BLOCKSIZE);
+        /*exit(1);*/
     }
-
-    result = recv(sock, server_reply, 2000, 0);
-    if(result < 0){
-        puts("Receive failed");
-        exit(EXIT_SUCCESS);
-        /*return 1;*/
-    }
-
-    puts(server_reply);
     close(sock);
 }

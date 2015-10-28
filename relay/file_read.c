@@ -27,6 +27,9 @@
 /*}*/
 
 void read_file(FILE *fp, int start_byte, int block_number, char *buffer){
+    /* 
+     * this function fills buffer with file pointer
+     * */
     size_t flen;
     size_t r_size = BLOCKSIZE;
     size_t nmemb = block_number;

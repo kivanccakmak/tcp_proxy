@@ -7,6 +7,7 @@ debug_server
 debug_client
 debug_some
 debug_read
+playground/play_some
 *.o
 **/*.jpg
 **/*.txt
