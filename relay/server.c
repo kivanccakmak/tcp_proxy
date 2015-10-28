@@ -95,17 +95,19 @@ void start_server(char * port){
     printf("server: waiting for connections\n");
     sin_size = sizeof their_addr;
 
-    new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size); 
-    if (new_fd == -1){
-        perror("accept");
-        exit(1);
-    }
-    inet_ntop(their_addr.ss_family, 
-            get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-
-    printf("server: got connection from %s\n", s);
-    numbytes = 1;
+    int counter = 0;
     while(1){
+        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size); 
+        numbytes = recv(new_fd, recv_buf, MAXDATASIZE-1, 0);
+        printf("counter: %d\n", counter);
+        counter += 1;
+        if (new_fd == -1){
+            perror("accept");
+            exit(1);
+        }
+        inet_ntop(their_addr.ss_family, 
+                get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+        printf("server: got connection from %s\n", s);
         while(numbytes > 0){
             numbytes = recv(new_fd, recv_buf, MAXDATASIZE-1, 0);
             printf("%s", recv_buf);
