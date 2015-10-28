@@ -5,4 +5,6 @@
 
 void read_file(FILE *fp, int start_btye, int block_number, char * buffer);
 
+int get_file_size(FILE *fp);
+
 #endif 

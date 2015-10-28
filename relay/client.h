@@ -1,6 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-void execute(char *, char *, char *);
+#include "client_headers.h"
+void execute(char *, char *, FILE *);
 
 #endif

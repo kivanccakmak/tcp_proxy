@@ -31,6 +31,14 @@
     /*fclose(fp);*/
 /*}*/
 
+int get_file_size(FILE *fp){
+    int file_size;
+    fseek(fp, 0L, SEEK_END);
+    file_size = ftell(fp);
+    fseek(fp, 0L, SEEK_SET);
+    return file_size;
+}
+
 void read_file(FILE *fp, int start_byte, int block_number, char *buffer){
     /* 
      * this function fills buffer with file pointer
