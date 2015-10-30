@@ -9,6 +9,7 @@ debug_client
 debug_some
 debug_read
 playground/play_some
+relay/debug_boss_rx
 *.o
 **/*.jpg
 **/*.txt

@@ -7,3 +7,6 @@ client: client.c file_read.c
 file_try: file_read.c
 	gcc file_read.c -o debug_read -ggdb
 	valgrind --log-file=domates.log --leak-check=full ./debug_read file_list/kivanc.txt 0 10 
+boss_rx: boss_server.c
+	gcc boss_server.c -o debug_boss_rx -ggdb
+	valgrind --log-file=kinyon.log --leak-check=full ./debug_boss_rx
