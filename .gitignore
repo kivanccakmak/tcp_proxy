@@ -14,3 +14,10 @@ relay/debug_boss_rx
 **/*.jpg
 **/*.txt
 **/*.log
+
+#PEPSAL related
+**.Po
+**.log
+**pepsal
+**.status
+pepsal-2.0.1/src/pepsal
