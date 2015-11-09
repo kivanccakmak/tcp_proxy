@@ -1,5 +1,6 @@
 **/*.o
 */.myscope/
+pepsal-2.0.1/pepsal.txt
 **/*.out
 **/*.files
 *.pyc

@@ -403,21 +403,25 @@ static ssize_t pep_receive(struct pep_endpoint *endp)
 
     if (endp->iostat & (PEP_IORDONE | PEP_IOERR | PEP_IOEOF) ||
         pepbuf_full(&endp->buf)) {
+        printf("pepbuf_full\n");
         return 0;
     }
 
     rb = read(endp->fd, PEPBUF_RPOS(&endp->buf),
               PEPBUF_SPACE_LEFT(&endp->buf));
+    printf("rb: %d\n", rb);
     if (rb < 0) {
         if (nonblocking_err_p(errno)) {
+            printf("rb < 0\n");
             endp->iostat |= PEP_IORDONE;
             return 0;
         }
-
+        printf("endp->iostat |= PEP_IOERR\n");
         endp->iostat |= PEP_IOERR;
         return -1;
     }
     else if (rb == 0) {
+        printf("endp->iostat |= PEP_IOEF\n");
         endp->iostat |= PEP_IOEOF;
         return 0;
     }
@@ -437,16 +441,18 @@ static ssize_t pep_send(struct pep_endpoint *from, int to_fd)
 
     wb = write(to_fd, PEPBUF_WPOS(&from->buf),
                PEPBUF_SPACE_FILLED(&from->buf));
+    printf("wb :%d\n", wb);
     if (wb < 0) {
         if (nonblocking_err_p(errno)) {
             from->iostat |= PEP_IOWDONE;
+            printf("nonblocking_err_p(errno)\n");
             return 0;
         }
-
+        printf("from->iostat |= PEP_IOERR\n");
         from->iostat |= PEP_IOERR;
         return -1;
     }
-
+    printf("pepbuf_update_wpos\n");
     pepbuf_update_wpos(&from->buf, wb);
     return wb;
 }
@@ -456,12 +462,35 @@ static void pep_proxy_data(struct pep_endpoint *from, struct pep_endpoint *to)
     ssize_t rb, wb;
 
     rb = wb = 1;
+    int f1 = from->addr & 0xff; 
+    int f2 = ((from->addr & 0xff00) >> 8);
+    int f3 = ((from->addr & 0xff0000) >> 16);
+    int f4 = ((from->addr & 0xff000000) >> 24);
+    printf("*\n");
+    printf("from ip: %d.%d.%d.%d\n", f4,f3,f2,f1);
+    printf("from port: %d\n", from->port);
+    f1 = to->addr & 0xff; 
+    f2 = ((to->addr & 0xff00) >> 8);
+    f3 = ((to->addr & 0xff0000) >> 16);
+    f4 = ((to->addr & 0xff000000) >> 24);
+    printf("to ip: %d.%d.%d.%d\n", f4,f3,f2,f1);
+    printf("to port: %d\n", to->port);
+    printf("*\n");
+    int mycount = 0;
     while ((wb > 0) || (rb > 0)) {
         rb = pep_receive(from);
         wb = pep_send(from, to->fd);
+        printf("mycount: %d\n", mycount);
+        mycount++;
+        if(mycount == 5){
+            wb = 0;
+            rb = 0;
+            pepbuf_update_wpos(&from->buf, 18);
+        }
     }
 
     if (from->iostat & PEP_IOERR) {
+        printf("PEP_IOERR\n");
         return;
     }
 
@@ -470,10 +499,12 @@ static void pep_proxy_data(struct pep_endpoint *from, struct pep_endpoint *to)
      * Stop wait for incomming data on this FD.
      */
     if (pepbuf_full(&from->buf) || (from->iostat & PEP_IOEOF)) {
+        printf("from->poll_events = ~POLLIN\n");
         from->poll_events &= ~POLLIN;
     }
     else if (from->iostat & PEP_IORDONE) {
         from->poll_events |= POLLIN;
+        printf("from->poll_events |= POLLIN\n");
     }
 
     /*
@@ -482,9 +513,11 @@ static void pep_proxy_data(struct pep_endpoint *from, struct pep_endpoint *to)
      */
     if (pepbuf_empty(&from->buf)) {
         to->poll_events &= ~POLLOUT;
+        printf("to->poll_events &= ~POLLOUT\n");
     }
     else { /* There exists some data to write. Wait until we can transmit it. */
         to->poll_events |= POLLOUT;
+        printf("to->poll_events |= ~POLLOUT\n");
     }
 }
 
@@ -525,6 +558,16 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     proxy->src.port = ntohs(ip4->tcph.source);
     proxy->dst.addr = ntohl(ip4->iph.daddr);
     proxy->dst.port = ntohs(ip4->tcph.dest);
+    printf("== my crib ==\n");
+    printf("proxy source addr \n");
+    int f1 = (proxy->src.addr & 0xff); 
+    int f2 = ((proxy->src.addr & 0xff00) >> 8);
+    int f3 = ((proxy->src.addr & 0xff0000) >> 16);
+    int f4 = ((proxy->src.addr & 0xff000000) >> 24);
+    printf("%d.%d.%d.%d\n", f4,f3,f2,f1);
+    printf("proxy src port \n");
+    printf("%d\n", proxy->src.port);
+    printf("== some == \n");
     proxy->syn_time = time(NULL);
     syntab_format_key(proxy, &key);
 
@@ -714,7 +757,11 @@ void *listener_loop(void  __attribute__((unused)) *unused)
 
         toip(ipbuf, proxy->dst.addr);
         r_port = proxy->dst.port;
-        PEP_DEBUG("Connecting to %s:%d...", ipbuf, r_port);
+        r_port=9000;
+        PEP_DEBUG("Kivanc is connecting to %s:%d...", ipbuf, r_port);
+        /*PEP_DEBUG("Kivanc is Connecting to %s:%d...", ipbuf, 9000);*/
+
+
         host = gethostbyname(ipbuf);
         if (!host) {
             pep_warning("Failed to get host %s!", ipbuf);
@@ -725,6 +772,7 @@ void *listener_loop(void  __attribute__((unused)) *unused)
         r_servaddr.sin_family = AF_INET;
         r_servaddr.sin_addr.s_addr = ((struct in_addr *)(host->h_addr))->s_addr;
         r_servaddr.sin_port = htons(r_port);
+        /*r_servaddr.sin_port = 9000;*/
 
         ret = socket(AF_INET, SOCK_STREAM, 0);
         if (ret < 0) {
@@ -1022,7 +1070,9 @@ static void *workers_loop(void __attribute__((unused)) *unused)
         PEPQUEUE_WAIT(&active_queue);
 
         while (active_queue.num_items > 0) {
+            printf("num: %d\n", active_queue.num_items);
             proxy = pepqueue_dequeue(&active_queue);
+            printf("num: %d\n", active_queue.num_items);
             PEPQUEUE_UNLOCK(&active_queue);
 
             pep_proxy_data(&proxy->src, &proxy->dst);
