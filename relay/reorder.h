@@ -13,6 +13,8 @@
 #define INIT_POOL_SIZE 1000
 #define INIT_BUF_SIZE 1000
 
+#define MAX(X,Y) (((X) < (Y)) ? (X) : (Y))
+
 #define NO_SEQUENCE -1
 
 /**
