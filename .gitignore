@@ -1,4 +1,6 @@
 **/*.o
+netfilter_max/*
+**/*.log
 */.myscope/
 pepsal-2.0.1/pepsal.txt
 **/*.out
@@ -9,6 +11,9 @@ debug_server
 debug_client
 debug_some
 debug_read
+test_reorder
+test_queue
+debug_reorder
 playground/play_some
 relay/debug_boss_rx
 *.o
@@ -25,3 +30,6 @@ pepsal-2.0.1/src/pepsal
 
 **/doxygen
 **/figs
+**/fork_trials
+**/nfq_play
+**/thread_trials

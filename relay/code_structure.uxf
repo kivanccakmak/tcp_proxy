@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?><diagram program="umlet" version="11.3">
+  <zoom_level>5</zoom_level>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>945</x>
+      <y>405</y>
+      <w>345</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*client*
+--
+int SEQ_NUMBER;
+int TX_BYTE_COUNT;
+int FILE_SIZE;
+FILE *FP;
+pthread_mutex_t LOCK;
+--
+struct cb_tx_args_t;
+--
+static void stream_file(char *ip_addr, char *port, int file_size, int conn_number);  
+static void thr_loop_tasks(char *thr_buff, struct sockaddr_in server, int byte_number);
+static void *tx_chain(void *args); //transmits data from particular TCP connection
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>530</x>
+      <y>405</y>
+      <w>345</w>
+      <h>105</h>
+    </coordinates>
+    <panel_attributes>*boss_server*
+--
+struct cb_rx_args_t;
+--
+static struct sigaction sig_init();
+static struct addrinfo* initialize(char *port); 
+static void server_listen(char *port); //listens from port, initiates rx_chain() thread for new connections
+static void sigchld_handler(int s);
+static void set_hints(struct addrinfo *hints);
+static void *get_in_ipaddr(struct sockaddr *sa);
+static uint32_t get_in_portnum(struct sockaddr *sa);
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>950</x>
+      <y>575</y>
+      <w>345</w>
+      <h>40</h>
+    </coordinates>
+    <panel_attributes>*file_read*
+--
+void read_file(FILE *fp, int start_byte, int end_byte, char *buffer);
+int get_file_size(FILE *fp);
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>60</x>
+      <y>405</y>
+      <w>345</w>
+      <h>40</h>
+    </coordinates>
+    <panel_attributes>*link_receptor*
+--
+pthread_mutex_t LOCK;
+--
+void *rx_chain(void *args);  //gets packets from particular TCP connection
+int init_reorder_slave(); //initializes reordering thread, which runs wait_packet() </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>860</x>
+      <y>445</y>
+      <w>94</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>15;15;85;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>1100</x>
+      <y>490</y>
+      <w>24</w>
+      <h>94</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;85;15;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>390</x>
+      <y>415</y>
+      <w>144</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;15;135;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>230</x>
+      <y>305</y>
+      <w>24</w>
+      <h>109</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;15;15;100</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>60</x>
+      <y>220</y>
+      <w>345</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*reorder*
+--
+struct heap;
+--
+void init_heap(heap_t *heap); //initialized by boss_server 
+void wait_packet(); //gets pointer of packet with pipes, from rx_chain
+static void enqueue_packet(encaps_packet_t *packet, heap_t *heap); //pushes packet pointer to queue
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+</diagram>
