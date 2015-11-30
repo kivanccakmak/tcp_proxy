@@ -1,10 +1,15 @@
 #include "nfqueue.h"
 
+static pthread_t queuer;
+static pthread_t listener;
+static pthread_t poller;
+
 static int queuenum = 0;
 
 static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa,
         void *data);
+
 
 int main(int argc, char *argv[]) {
 
@@ -25,8 +30,6 @@ int main(int argc, char *argv[]) {
         printf("failed to bind\n");
     }
 
-    //TODO: queuenum is global variable, check this out in
-    //pepsal source code
     qh = nfq_create_queue(h, queuenum, &nfqueue_get_syn, NULL);
 
     ret = nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xffff);

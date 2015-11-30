@@ -1,5 +1,7 @@
 #include "test.h"
 
+#define QUEUE_TEST 1
+
 static void execute_queue(char *dest_ip, 
         char *dest_port);
 
@@ -18,6 +20,9 @@ static int* generrate_index(int size);
 static void fill_packet(int seq_number,
         encaps_packet_t *packet);
 
+static void execute_receive(char *dest_ip, 
+        char *dest_port); 
+
 /**
  * @brief 
  *
@@ -30,17 +35,37 @@ static void fill_packet(int seq_number,
  * @return 
  */
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("usage: %s test_unit END_DEST_IP END_DEST_PORT \n", argv[0]);
-        printf("ex: %s test_queue 127.0.0.1 5050 \n", argv[0]);
-    } else{
-        if (strcmp("-que", argv[1]) == 0) {
-            execute_queue(argv[2], argv[3]);
-        } else if(strcmp("-reord", argv[1]) == 0) {
-            execute_reorder(argv[2], argv[3]);
-        }
-    }
+if (argc != 3) {
+#ifdef QUEUE_TEST
+    execute_queue(argv[2], argv[3]);
+#elif REORD_TEST
+    execute_reorder(argv[2], argv[3]);
+#elif RECV_TEST
+    execute_receive(argv[2], argv[3]);
+#else
+    printf("[%s] - no test pattern foud \n", argv[0]);
+#endif
+} else {
+    printf("[%s] - no test pattern found! \n", argv[0]);
+}
     return 0;
+}
+
+/**
+ * @brief Initiates receiver thread 
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ */
+static void execute_receive(char *dest_ip, char *dest_port) {
+    int dest_thr;
+    pthread_t dest_id;
+    printf("initiaging receiver thread on %s:%s \n", 
+            dest_ip, dest_port);
+    dest_thr = pthread_create(&dest_id, NULL, &init_receive,
+            dest_port);
+    printf("dest_thr: %d\n", dest_thr);
+    pthread_join(dest_id, NULL);
 }
 
 /**
