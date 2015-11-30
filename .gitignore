@@ -1,4 +1,5 @@
 **/*.o
+**/atom
 netfilter_max/*
 **/*.log
 */.myscope/
