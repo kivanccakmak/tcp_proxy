@@ -15,5 +15,10 @@
 #include "../reorder.h"
 #include "../link_receptor.h"
 
+
+struct recv_params{
+    char *dest_port;
+};
+
 #endif
 
