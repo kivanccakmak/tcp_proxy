@@ -1,13 +1,13 @@
 #include "test.h"
 
-#ifdef RECV_TEST
+#ifdef TEST_RECV
 static void execute_receive(char *dest_ip, 
         char *dest_port); 
 
 static void *init_receive(void *args);
 #endif
 
-#ifdef QUEUE_TEST
+#ifdef TEST_QUEUE
 static void execute_queue(char *dest_ip, 
     char *dest_port);
 
@@ -16,7 +16,7 @@ static void *test_queue(void *args);
 static void *init_receive(void *args);
 #endif
 
-#ifdef REORD_TEST
+#ifdef TEST_REORDER
 static void execute_reorder(char *dest_ip,
         char *dest_port);
 
@@ -24,6 +24,14 @@ static bool isvalue_inarray(int val,
         int *arr, int size); 
 
 static void *init_receive(void *args);
+
+
+static int* generate_index(int size); 
+
+static void fill_packet(int seq_number,
+        encaps_packet_t *packet);
+
+static void *test_queue(void *args);
 #endif
 
 /**
@@ -38,12 +46,13 @@ static void *init_receive(void *args);
  * @return 
  */
 int main(int argc, char *argv[]) {
-if (argc != 2) {
-#ifdef QUEUE_TEST
+    printf("argc: %d\n", argc);
+if (argc == 3) {
+#ifdef TEST_QUEUE
     execute_queue(argv[1], argv[2]);
-#elif REORD_TEST
+#elif TEST_REORDER
     execute_reorder(argv[1], argv[2]);
-#elif RECV_TEST
+#elif TEST_RECV
     printf("hello world\n");
     execute_receive(argv[1], argv[2]);
 #else
@@ -55,7 +64,7 @@ if (argc != 2) {
     return 0;
 }
 
-#ifdef RECV_TEST
+#ifdef TEST_RECV
 /**
  * @brief Initiates receiver thread 
  *
@@ -74,7 +83,7 @@ static void execute_receive(char *dest_ip, char *dest_port) {
 }
 #endif
 
-#ifdef REORD_TEST
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -140,7 +149,7 @@ static void execute_reorder(char *dest_ip,
 }
 #endif
 
-#ifdef REORD_TEST
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -165,7 +174,7 @@ static bool isvalue_inarray(int val,
 }
 #endif
 
-#ifdef REORD_TEST
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -204,7 +213,7 @@ static int* generate_index(int size) {
 }
 #endif
 
-#ifdef REORD_TEST
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -224,7 +233,7 @@ static void fill_packet(int seq_number,
 }
 #endif
 
-#if defined(REORD_TEST) || defined(QUEUE_TEST)
+#if defined(TEST_REORDER) || defined(TEST_QUEUE)
 /**
  * @brief 
  *
@@ -278,7 +287,7 @@ static void execute_queue(char *dest_ip, char *dest_port) {
 }
 #endif
 
-#ifdef TEST_QUEUE
+#if defined(TEST_QUEUE) || defined(TEST_REORDER)
 /**
  * @brief 
  *
@@ -327,7 +336,7 @@ static void *test_queue(void *args) {
 #endif
 
 
-#if defined(RECV_TEST) || defined(TEST_QUEUE) || defined(TEST_REORDER)
+#if defined(TEST_RECV) || defined(TEST_QUEUE) || defined(TEST_REORDER)
 /**
  * @brief 
  *
