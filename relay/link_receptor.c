@@ -35,6 +35,7 @@ void *rx_chain(void *args){
     while (1) {
         // wait socket file descriptor to get packet
         rv = poll(&pfd, 1, cb_args->poll_timeout); 
+        printf("rv: %d\n", rv);
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count, 1, 0);
             if (numbytes > 0) {

@@ -74,10 +74,15 @@ if (argc == 3) {
 static void execute_receive(char *dest_ip, char *dest_port) {
     int dest_thr;
     pthread_t dest_id;
+    struct debug_receiver_args *rx_args = NULL;
+    rx_args = (struct debug_receiver_args*) 
+        malloc(sizeof(struct debug_receiver_args*));
+    rx_args->dest_port = dest_port;
+    rx_args->filename = (char *) RECEIVER_OUT;
     printf("initiating receiver thread on %s:%s \n", 
             dest_ip, dest_port);
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
-            dest_port);
+            rx_args);
     printf("dest_thr: %d\n", dest_thr);
     pthread_join(dest_id, NULL);
 }
@@ -119,10 +124,13 @@ static void execute_reorder(char *dest_ip,
     
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
             (void *) rx_args);
+    printf("dest_thr: %d\n", dest_thr);
+
     sleep(5);
     que = queue_init(dest_ip, dest_port);
     queue_thr = pthread_create(&queue_id, NULL, 
             &queue_wait, (void *) que);
+    printf("queue_thr: %d\n", queue_thr);
 
     pool = packet_pool_init(); 
     reord_args = (cb_reord_args_t *) malloc(sizeof(cb_reord_args_t*));
@@ -130,6 +138,7 @@ static void execute_reorder(char *dest_ip,
     reord_args->queue = que;
     pool_thr = pthread_create(&pool_id, NULL,
             &nudge_queue, (void *) reord_args);
+    printf("pool_thr: %d\n", pool_thr);
 
     ind_array = generate_index(MAX_PACKET);
     encaps_packet_t **packets = NULL;
