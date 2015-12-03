@@ -28,6 +28,13 @@ struct ipv4_packet{
     struct tcphdr tcph;
 };
 
+struct cb_args_syn{
+    struct nfq_q_handle *qh;
+    struct nfgenmsg *nfmsg;
+    struct nfq_data *nfa;
+    void *data;
+};
+
 #define QUEUER_BUF_SIZE PAGE_SIZE
 
 #endif 

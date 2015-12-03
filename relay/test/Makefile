@@ -10,7 +10,6 @@ TEST_INPUT = ../file_list/kivanc.txt
 
 DEST_IP = 127.0.0.1
 DEST_PORT = 5050
-
 TEST_SRC = test.c
 
 # to test queue module

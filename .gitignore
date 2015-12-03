@@ -1,5 +1,6 @@
 **/*.o
 **/atom
+**/split.log
 netfilter_max/*
 **/*.log
 */.myscope/
