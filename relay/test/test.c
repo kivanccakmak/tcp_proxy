@@ -1,22 +1,38 @@
 #include "test.h"
 
-static void execute_queue(char *dest_ip, 
-        char *dest_port);
+#ifdef TEST_RECV
+static void execute_receive(char *dest_ip, 
+        char *dest_port); 
 
-static void execute_reorder(char *dest_ip,
-        char *dest_port);
+static void *init_receive(void *args);
+#endif
+
+#ifdef TEST_QUEUE
+static void execute_queue(char *dest_ip, 
+    char *dest_port);
 
 static void *test_queue(void *args);
 
 static void *init_receive(void *args);
+#endif
+
+#ifdef TEST_REORDER
+static void execute_reorder(char *dest_ip,
+        char *dest_port);
 
 static bool isvalue_inarray(int val, 
         int *arr, int size); 
 
-static int* generrate_index(int size); 
+static void *init_receive(void *args);
+
+
+static int* generate_index(int size); 
 
 static void fill_packet(int seq_number,
         encaps_packet_t *packet);
+
+static void *test_queue(void *args);
+#endif
 
 /**
  * @brief 
@@ -30,19 +46,44 @@ static void fill_packet(int seq_number,
  * @return 
  */
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("usage: %s test_unit END_DEST_IP END_DEST_PORT \n", argv[0]);
-        printf("ex: %s test_queue 127.0.0.1 5050 \n", argv[0]);
-    } else{
-        if (strcmp("-que", argv[1]) == 0) {
-            execute_queue(argv[2], argv[3]);
-        } else if(strcmp("-reord", argv[1]) == 0) {
-            execute_reorder(argv[2], argv[3]);
-        }
-    }
+    printf("argc: %d\n", argc);
+if (argc == 3) {
+#ifdef TEST_QUEUE
+    execute_queue(argv[1], argv[2]);
+#elif TEST_REORDER
+    execute_reorder(argv[1], argv[2]);
+#elif TEST_RECV
+    printf("hello world\n");
+    execute_receive(argv[1], argv[2]);
+#else
+    printf("[%s] - no test pattern foud \n", argv[0]);
+#endif
+} else {
+    printf("[%s] - no test pattern found! \n", argv[0]);
+}
     return 0;
 }
 
+#ifdef TEST_RECV
+/**
+ * @brief Initiates receiver thread 
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ */
+static void execute_receive(char *dest_ip, char *dest_port) {
+    int dest_thr;
+    pthread_t dest_id;
+    printf("initiaging receiver thread on %s:%s \n", 
+            dest_ip, dest_port);
+    dest_thr = pthread_create(&dest_id, NULL, &init_receive,
+            dest_port);
+    printf("dest_thr: %d\n", dest_thr);
+    pthread_join(dest_id, NULL);
+}
+#endif
+
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -81,7 +122,7 @@ static void execute_reorder(char *dest_ip,
     pool_thr = pthread_create(&pool_id, NULL,
             &nudge_queue, (void *) reord_args);
 
-    ind_array = generrate_index(MAX_PACKET);
+    ind_array = generate_index(MAX_PACKET);
     encaps_packet_t **packets = NULL;
     packets = (encaps_packet_t **) 
         malloc(sizeof(encaps_packet_t*) * MAX_PACKET);
@@ -106,8 +147,9 @@ static void execute_reorder(char *dest_ip,
     pthread_join(queue_id, NULL);
     pthread_join(pool_id, NULL);
 }
+#endif
 
-
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -130,7 +172,9 @@ static bool isvalue_inarray(int val,
     }
     return false;
 }
+#endif
 
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -144,7 +188,7 @@ static bool isvalue_inarray(int val,
  *
  * @return 
  */
-static int* generrate_index(int size) {
+static int* generate_index(int size) {
     int count = 0, val;
     int *index_vals = NULL;
     index_vals = (int *) 
@@ -167,7 +211,9 @@ static int* generrate_index(int size) {
     }
     return index_vals;
 }
+#endif
 
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -185,7 +231,9 @@ static void fill_packet(int seq_number,
         packet->raw_packet[i] = randomletter;
     }
 }
+#endif
 
+#if defined(TEST_REORDER) || defined(TEST_QUEUE)
 /**
  * @brief 
  *
@@ -207,8 +255,10 @@ static void execute_queue(char *dest_ip, char *dest_port) {
     pthread_t dest_id, queue_id, test_id;
     queue_t* que = NULL;
 
+    struct recv_params *rp;
+    rp->dest_port = dest_port;
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
-            dest_port);
+            (void *) dest_port);
 
     sleep(5);
 
@@ -235,7 +285,9 @@ static void execute_queue(char *dest_ip, char *dest_port) {
     pthread_join(queue_id, NULL);
     pthread_join(test_id, NULL);
 }
+#endif
 
+#if defined(TEST_QUEUE) || defined(TEST_REORDER)
 /**
  * @brief 
  *
@@ -271,8 +323,6 @@ static void *test_queue(void *args) {
         que->index = index;
 
         printf("==index: %d\n", index);
-
-
         printf("== sending signal \n");
         sleep(1);
         pthread_mutex_unlock(&que->lock);
@@ -283,7 +333,10 @@ static void *test_queue(void *args) {
     }
     return NULL;
 }
+#endif
 
+
+#if defined(TEST_RECV) || defined(TEST_QUEUE) || defined(TEST_REORDER)
 /**
  * @brief 
  *
@@ -320,6 +373,7 @@ static void *init_receive(void *args) {
 
     // get addrinfo of this machine
     dest_port = (char *) args;
+    printf("dest_port: %s\n", dest_port);
     rs_addr = getaddrinfo(NULL, dest_port, 
             &hints, &servinfo);
 
@@ -336,6 +390,7 @@ static void *init_receive(void *args) {
     set_val = 
         setsockopt(sockfd, SOL_SOCKET, 
                 SO_REUSEADDR, &yes, sizeof(int));
+    printf("set_val: %d\n", set_val);
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
     if (bind_val == -1) {
         close(sockfd);
@@ -381,11 +436,4 @@ static void *init_receive(void *args) {
         raw_buf = (unsigned char *) malloc(BLOCKSIZE);
     }
 }
-
-
-
-
-
-
-
-
+#endif
