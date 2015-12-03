@@ -1,7 +1,7 @@
 #ifndef TEST_QUEUE_H
 #define TEST_QUEUE_H
 
-#define MAX_PACKET 100 
+#define MAX_PACKET 5 
 
 /**
  * @brief msec, reorder test
@@ -25,10 +25,6 @@
 #include "../link_receptor.h"
 
 
-<<<<<<< HEAD
-struct recv_params{
-    char *dest_port;
-=======
 /**
  * @brief call-back arguments
  * of debug receiver thread
@@ -43,7 +39,6 @@ struct debug_receiver_args{
      * matches with array
      */
     char *filename;
->>>>>>> origin/test-reorder_output
 };
 
 #endif

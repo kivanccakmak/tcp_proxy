@@ -74,7 +74,7 @@ if (argc == 3) {
 static void execute_receive(char *dest_ip, char *dest_port) {
     int dest_thr;
     pthread_t dest_id;
-    printf("initiaging receiver thread on %s:%s \n", 
+    printf("initiating receiver thread on %s:%s \n", 
             dest_ip, dest_port);
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
             dest_port);
@@ -277,10 +277,14 @@ static void execute_queue(char *dest_ip, char *dest_port) {
     pthread_t dest_id, queue_id, test_id;
     queue_t* que = NULL;
 
-    struct recv_params *rp;
-    rp->dest_port = dest_port;
+    struct debug_receiver_args *rx_args = NULL;
+    rx_args = (struct debug_receiver_args *)
+        malloc(sizeof(struct debug_receiver_args*));
+
+    rx_args->filename = RECEIVER_OUT;
+    rx_args->dest_port = dest_port;
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
-            (void *) dest_port);
+            rx_args);
 
     sleep(5);
 
