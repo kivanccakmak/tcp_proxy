@@ -111,8 +111,11 @@ void push2pool(char *raw_packet,
     // if sequentially expected packet came, make pool thread 
     wake_pool = (packet->seq == (pool->queue_seq + 1));
     printf("wake_pool: %d\n", wake_pool ? 1 : 0);
-    if (wake_pool) 
+    printf("packet->seq: %d\n", packet->seq);
+    printf("pool->queue_seq: %d\n", pool->queue_seq);
+    if (wake_pool) {
         pthread_cond_signal(&pool->cond);
+    } 
 
     pthread_mutex_unlock(&pool->lock);
     

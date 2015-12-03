@@ -44,6 +44,7 @@ void *nudge_queue(void *args) {
         while (packet_exist) {
             printf("* towards add2queue() \n");
             add2queue(queue, pool->sequential_nodes[index]);
+            pool->queue_seq++;
             printf("* passed add2queue() \n");
             index++;
             packet_exist = (pool->sequential_nodes[index] != NULL);

@@ -100,6 +100,8 @@ static void execute_receive(char *dest_ip, char *dest_port) {
  */
 static void execute_reorder(char *dest_ip, 
         char *dest_port) {
+    clock_t start = clock(), diff;
+    int msec;
     int i = 0;
     int dest_thr, queue_thr, pool_thr;
     int *ind_array;
@@ -107,9 +109,16 @@ static void execute_reorder(char *dest_ip,
     queue_t *que = NULL;
     struct packet_pool *pool = NULL;
     cb_reord_args_t *reord_args = NULL;
+    struct debug_receiver_args *rx_args = NULL;
 
+    rx_args = (struct debug_receiver_args *)
+        malloc(sizeof(struct debug_receiver_args*));
+
+    rx_args->filename = (char *) RECEIVER_OUT;
+    rx_args->dest_port = dest_port;
+    
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
-            dest_port);
+            (void *) rx_args);
     sleep(5);
     que = queue_init(dest_ip, dest_port);
     queue_thr = pthread_create(&queue_id, NULL, 
@@ -138,11 +147,23 @@ static void execute_reorder(char *dest_ip,
 
     for (i = 0; i < MAX_PACKET; i++) {
         pthread_mutex_lock(&pool->lock);
-        printf("i: %d, packets[%d]->raw_packet: %s\n", 
-                i, i, packets[i]->raw_packet);
         push2pool((char *) packets[i], pool);
         sleep(1);
     }
+    
+    diff = clock() - start;
+    msec = diff * 1000 / CLOCKS_PER_SEC; 
+    while (msec < RUNTIME) {
+        diff = clock() - start;
+        msec = diff * 1000 / CLOCKS_PER_SEC;
+    }
+    /*printf("**************\n");*/
+    /*printf("killing threads bitches\n");*/
+    /*pthread_kill(dest_id, SIGKILL);*/
+    /*pthread_kill(queue_id, SIGKILL);*/
+    /*pthread_kill(pool_id, SIGKILL);*/
+    /*printf("**************\n");*/
+
     pthread_join(dest_id, NULL);
     pthread_join(queue_id, NULL);
     pthread_join(pool_id, NULL);
@@ -150,6 +171,7 @@ static void execute_reorder(char *dest_ip,
 #endif
 
 #ifdef TEST_REORDER
+
 /**
  * @brief 
  *
@@ -342,7 +364,7 @@ static void *test_queue(void *args) {
  *
  * end destination emulate thread, waits
  * packets from socket file descriptor
- * of queue. 
+ * of queue. Consequently, writes into file 
  *
  * @param args
  *
@@ -353,13 +375,14 @@ static void *init_receive(void *args) {
     printf("in init_receive thread \n");
 
     char *dest_port = NULL;
+    FILE *fp = NULL;
 
     int rs_addr;
     int yes = 1;
     int sockfd;
     int set_val, bind_val, listen_val;
+    struct debug_receiver_args *rx_args = NULL;
 
-    // buffer to receive packet 
     unsigned char *raw_buf = 
         (unsigned char *) malloc(BLOCKSIZE);
     struct addrinfo hints, *addr, *servinfo;
@@ -372,8 +395,9 @@ static void *init_receive(void *args) {
     hints.ai_flags = AI_PASSIVE;
 
     // get addrinfo of this machine
-    dest_port = (char *) args;
-    printf("dest_port: %s\n", dest_port);
+    rx_args = (struct debug_receiver_args *) args;
+    dest_port = rx_args->dest_port;
+    fp = fopen(rx_args->filename, "w");
     rs_addr = getaddrinfo(NULL, dest_port, 
             &hints, &servinfo);
 
@@ -430,6 +454,10 @@ static void *init_receive(void *args) {
         }
         /*printf("END DESTINATION RECV_COUNT: %ld\n", recv_count);*/
         printf("END DESTINATION RECEIVED: %s\n", raw_buf);
+        fp = fopen(rx_args->filename, "a");
+        fprintf(fp, "%s", raw_buf);
+        fprintf(fp, "%s", "\0");
+        fclose(fp);
         recv_count = 0;
         numbytes = 0;
         free(raw_buf);

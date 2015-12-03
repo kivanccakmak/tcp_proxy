@@ -37,6 +37,7 @@ void *queue_wait(void *args) {
         for (pack_cnt = 0; pack_cnt <= que->index; pack_cnt++) {
             printf("pack_cnt: %d\n", pack_cnt);
             printf("message: %s\n", que->buffer[pack_cnt]);
+            printf("queue->last_seq: %d\n", que->last_seq);
             while (byte < BLOCKSIZE) {
                 nwrite = write(que->sockfd, que->buffer[pack_cnt] + byte,
                         BLOCKSIZE - byte);
