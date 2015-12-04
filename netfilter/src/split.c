@@ -218,23 +218,27 @@ void *pass_payload(void *args)
             printf("raw_buf: %s\n", raw_buf);
             recv_count = 0;
             numbytes = 0;
+            send_count = 0;
+            printf("***************************\n");
             while (send_count < (int) BUFF_SIZE) {
+                printf("numbytes: %d\n", numbytes);
+                printf("raw_buf: %s\n", raw_buf+send_count);
                 numbytes = write(tx_sock, raw_buf+send_count,
-                        BLOCKSIZE-send_count);
+                        BUFF_SIZE-send_count);
                 if (numbytes > 0) {
                     send_count += numbytes;
                 }
-                printf("numbytes: %d\n", numbytes);
                 if (numbytes == 0) {
                     break;
                 }
             }
-            send_count = 0;
+            printf("***************************\n");
             raw_buf = (char *) malloc(BUFF_SIZE);
         }
-
     }
 }
+
+
 
 
 /**
