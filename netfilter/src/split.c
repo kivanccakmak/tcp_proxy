@@ -157,8 +157,8 @@ void *pass_payload(void *args)
     int split_sock, tx_sock;
     char src_ip[INET6_ADDRSTRLEN];
     uint32_t src_port;
-    unsigned char *raw_buf = 
-        (unsigned char*) malloc(BUFF_SIZE);
+    char *raw_buf = 
+        (char*) malloc(BUFF_SIZE);
 
     proxy = (struct listen_args*) 
         malloc(sizeof(struct listen_args*));
@@ -230,7 +230,7 @@ void *pass_payload(void *args)
                 }
             }
             send_count = 0;
-            raw_buf = (unsigned char *) malloc(BUFF_SIZE);
+            raw_buf = (char *) malloc(BUFF_SIZE);
         }
 
     }
