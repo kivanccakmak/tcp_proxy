@@ -1,0 +1,70 @@
+#include "stream.h"
+
+static void stream(char *ip_addr, char *port,
+        FILE *fp);
+
+int main(int argc, char *argv[]) {
+    if (argc != 4) {
+        printf("Wrong Usage\n");
+        exit(0);
+    } else{
+        char *ip_addr, *port, *fname;
+        FILE *fp;
+        
+        ip_addr = argv[1];
+        port = argv[2];
+        fname = argv[3];
+
+        fp = fopen(fname, "a+");
+
+        stream(ip_addr, port, fp);
+    }
+}
+
+/**
+ * @brief 
+ *
+ * @param[in] ip_addr
+ * @param[in] port
+ * @param[in] fp
+ */
+static void stream(char *ip_addr, char *port, FILE *fp)
+{ 
+    int conn_res = 0, sockfd;
+    int byte_count = 0, temp_count = 0;
+    int file_size = 0, amount = 0;
+    char *thr_buff;
+
+    //Initialize sockaddr_in struct to connect to dest
+    struct sockaddr_in server;
+    server.sin_addr.s_addr = inet_addr(ip_addr);
+    server.sin_family = AF_INET;
+    server.sin_port = htons( atoi(port) );
+
+    printf("socket initializing ...\n");
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    printf("connecting ...\n");
+    conn_res = connect(sockfd, (struct sockaddr*)&server,
+            sizeof(server));
+    if (conn_res < 0) {
+        perror("connection failed. Error");
+    }
+
+    thr_buff = (char *) malloc(BLOCKSIZE);
+    file_size = get_file_size(fp);
+
+    while (byte_count < file_size) {
+        read_file(fp, byte_count, byte_count + BLOCKSIZE, thr_buff);
+        while (temp_count < BLOCKSIZE) {
+            amount = write(sockfd, thr_buff+temp_count, 
+                    BLOCKSIZE-temp_count); 
+            if (amount > 0) {
+                temp_count += amount;
+            }
+        }
+        byte_count += temp_count;
+        temp_count = 0;
+    }
+
+} 
