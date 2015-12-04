@@ -6,19 +6,19 @@ static void stream(char *ip_addr, char *port,
 int main(int argc, char *argv[]) {
     if (argc != 4) {
         printf("Wrong Usage\n");
-        exit(0);
-    } else{
-        char *ip_addr, *port, *fname;
-        FILE *fp;
-        
-        ip_addr = argv[1];
-        port = argv[2];
-        fname = argv[3];
-
-        fp = fopen(fname, "a+");
-
-        stream(ip_addr, port, fp);
+        printf("%s dest_ip dest_port file_name\n", argv[0]);
+        return 0;
     }
+
+    char *ip_addr, *port, *fname;
+    FILE *fp;
+    
+    ip_addr = argv[1];
+    port = argv[2];
+    fname = argv[3];
+
+    fp = fopen(fname, "a+");
+    stream(ip_addr, port, fp);
 }
 
 /**

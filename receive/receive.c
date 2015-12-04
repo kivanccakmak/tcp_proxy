@@ -1,19 +1,25 @@
 #include "receive.h"
 
-static void get_packets(char *port);
+static void get_packets(char *port, FILE *fp);
 
 int main(int argc, char *argv[]) 
 {
 
-    if (argc != 2) {
+    if (argc != 3) {
         printf("Wrong usage\n");
-        printf("%s port_number\n", argv[0]);
+        printf("%s port_number output_file\n", argv[0]);
         return 0;
     }
 
     char *port;
+    char *output;
+    FILE *fp;
+
     port = argv[1];
-    get_packets(port);
+    output = argv[2];
+    fp = fopen(output, "a");
+
+    get_packets(port, fp);
     return 0;
 }
 
@@ -22,13 +28,15 @@ int main(int argc, char *argv[])
  * @brief 
  *
  * @param[in] port
+ * @param[in] fp
  */
-static void get_packets(char *port) 
+static void get_packets(char *port, FILE *fp) 
 { 
     int rs_addr;
     int sockfd;
     int yes = 1;
-    int n;
+    int n = 1;
+    int recv_count = 0;
     int set_val, bind_val, listen_val;
     struct sockaddr_storage their_addr;
     struct addrinfo hints, *addr, *servinfo;
@@ -76,17 +84,25 @@ static void get_packets(char *port)
     sockfd = accept(sockfd, (struct sockaddr*)&their_addr, &sin_size);
     printf("end destination accepted connection \n");
 
-    while ((n = recv(sockfd, buffer, BLOCKSIZE, 0)) > 0) {
-        printf("buf: %s \n", buffer);
-    } 
-
-
-
-
-
-
-
-
+    while (n > 0) {
+        memset(buffer, '\0', sizeof(buffer));
+        while (recv_count < BLOCKSIZE) {
+            n = recv(sockfd, buffer+recv_count, BLOCKSIZE-recv_count, 0);
+            if (n > 0) {
+                recv_count += n;
+            } else {
+                break;
+            }
+        }
+        if (n < 1) {
+            break;
+        }
+        recv_count = 0;
+        fprintf(fp, "%s", buffer);
+    }
+    fprintf(fp, "%s", buffer);
+    fprintf(fp, "%s", "\0");
+    fclose(fp);
 }
 
 
