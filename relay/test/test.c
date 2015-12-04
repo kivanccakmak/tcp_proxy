@@ -400,6 +400,7 @@ static void *init_receive(void *args) {
         (unsigned char *) malloc(BLOCKSIZE);
     struct addrinfo hints, *addr, *servinfo;
     struct sockaddr_storage their_addr;
+    socklen_t sin_size;
 
     // set hints
     memset(&hints, 0, sizeof hints);
@@ -438,7 +439,7 @@ static void *init_receive(void *args) {
         exit(1);
     }
 
-    socklen_t sin_size;
+
     sin_size = sizeof(their_addr);
 
     printf("end destination listens \n");
