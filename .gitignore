@@ -1,6 +1,6 @@
 **/*.o
 **/atom
-**/stream
+stream/stream
 **/split.log
 netfilter_max/*
 **/*.log
