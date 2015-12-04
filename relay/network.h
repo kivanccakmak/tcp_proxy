@@ -2,6 +2,10 @@
 #define NETWORK_HEADERS_H
 
 #include <stdio.h>
+#include <errno.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 /**
  * @brief number of bytes in raw_tcp data
@@ -33,6 +37,9 @@ typedef struct encaps_packet{
 } __attribute__((packed)) encaps_packet_t;
 
 #define PACKET_SIZE sizeof(encaps_packet_t)
+
+uint32_t get_in_portnum(struct sockaddr *sa);
+void *get_in_ipaddr(struct sockaddr *sa);
 
 #endif
 

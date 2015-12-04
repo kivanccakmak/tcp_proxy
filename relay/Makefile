@@ -7,7 +7,7 @@ THREAD_FLAG = -lpthread
 TEST_INPUT = file_list/kivanc.txt
 VALGRIND = valgrind
 
-BOSS_RX_DEP = reorder.c link_receptor.c queue.c 
+BOSS_RX_DEP = reorder.c link_receptor.c queue.c network.c 
 BOSS_RX_SRC = boss_server.c
 BOSS_RX_TARGET = debug_boss_rx
 BOSS_LOG = boss.log
