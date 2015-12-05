@@ -18,11 +18,11 @@
 #include <math.h>
 #include <time.h>
 
-#include "../network.h"
-#include "../queue.h"
-#include "../boss_server.h"
-#include "../reorder.h"
-#include "../link_receptor.h"
+#include "../network/network.h"
+#include "../rx_proxy/queue.h"
+#include "../rx_proxy/boss_server.h"
+#include "../rx_proxy/reorder.h"
+#include "../rx_proxy/link_receptor.h"
 
 
 /**

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "network.h"
+#include "../network/network.h"
 #include "queue.h"
 
 #define NODE_SIZE sizeof(list_node_t *)

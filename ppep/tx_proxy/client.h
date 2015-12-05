@@ -14,8 +14,8 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "file_read.h"
-#include "network.h"
+#include "../file_read/file_read.h"
+#include "../network/network.h"
 
 
 /**

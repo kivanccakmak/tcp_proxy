@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#include "network.h"
+#include "../network/network.h"
 
 #define INIT_QUEUE_SIZE sizeof(char *) * 1000
 

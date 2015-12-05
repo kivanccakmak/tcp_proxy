@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "../relay/file_read.h"
-#include "../relay/network.h"
+#include "../file_read/file_read.h"
+#include "../network/network.h"
 
 #endif

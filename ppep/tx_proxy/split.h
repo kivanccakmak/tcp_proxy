@@ -26,7 +26,7 @@
 #include <linux/if_ether.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include "../../relay/network.h"
+#include "../network/network.h"
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
