@@ -9,6 +9,6 @@ FILENAME = kivanc.txt
 
 $(TARGET): $(SRC) $(DEP) 
 	$(GCC) $(SRC) $(DEP) -o $(TARGET)
-	./$(TARGET) $(DEST_IP) $(DEST_PORT) $(FILENAME)
+	./$(TARGET) $(DEST_IP) $(DEST_PORT) $(FILENAME) -DSTREAM
 clean:
 	rm -f $(TARGET)

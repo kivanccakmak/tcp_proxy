@@ -15,54 +15,46 @@ static void set_cb_rx_args(cb_rx_args_t *rx_args,
         int sockfd, queue_t *queue, struct packet_pool *pool,
         int poll_timeout); 
 
-/**
- * @brief 
- *
- * Main function of receiver side
- * of proxy.
- 
- * @param[in] argc
- * @param[in] argv[]
- *
- * @return 
- */
-int main(int argc, char * argv[]){
-    if (argc != 2){
+#ifdef RX_PROXY
+int main(int argc, char * argv[])
+{
+    if (argc != 4){
         printf("usage: %s SERVER_PORT DEST_IP DEST_PORT  \n", argv[0]);
         printf("ex: %s 5050 192.168.3.3 4040 \n", argv[0]);
-    }else{
-        // get port number of server
-        char *dest_ip, *dest_port, *server_port;
-        int queue_thr, pool_thr;
-        struct packet_pool *pool = NULL;
-
-        pthread_t queue_id, pool_id;
-        cb_reord_args_t *reord_args = (cb_reord_args_t *)
-            malloc(sizeof(cb_reord_args_t*));
-
-        server_port = argv[1];
-        dest_ip = argv[2];
-        dest_port = argv[3];
-
-        printf("initialize queue \n");
-        queue_t *queue = queue_init(dest_ip, dest_port);
-        queue_thr = pthread_create(&queue_id, NULL, &queue_wait,
-            (void *) queue);
-
-        pool = packet_pool_init();
-        reord_args->queue = queue;
-        reord_args->pool = pool;
-        pool_thr = pthread_create(&pool_id, NULL, &nudge_queue,
-                (void *) reord_args);
-
-        server_listen(server_port, pool, queue);
-
-        pthread_join(queue_id, NULL);
-        pthread_join(pool_id, NULL);
+        return 0;
     }
+
+    char *dest_ip, *dest_port, *server_port;
+    int queue_thr, pool_thr;
+    struct packet_pool *pool = NULL;
+
+    pthread_t queue_id, pool_id;
+    cb_reord_args_t *reord_args = (cb_reord_args_t *)
+        malloc(sizeof(cb_reord_args_t*));
+
+    server_port = argv[1];
+    dest_ip = argv[2];
+    dest_port = argv[3];
+
+    printf("initialize queue \n");
+    queue_t *queue = queue_init(dest_ip, dest_port);
+    queue_thr = pthread_create(&queue_id, NULL, &queue_wait,
+        (void *) queue);
+
+    pool = packet_pool_init();
+    reord_args->queue = queue;
+    reord_args->pool = pool;
+    pool_thr = pthread_create(&pool_id, NULL, &nudge_queue,
+            (void *) reord_args);
+
+    server_listen(server_port, pool, queue);
+
+    pthread_join(queue_id, NULL);
+    pthread_join(pool_id, NULL);
 
     return 0;
 }
+#endif
 
  /**
   * @brief 

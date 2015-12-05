@@ -2,14 +2,14 @@
 
 #ifdef TEST_RECV
 static void execute_receive(char *dest_ip, 
-        char *dest_port); 
+        char *dest_port, char *outfile); 
 
 static void *init_receive(void *args);
 #endif
 
 #ifdef TEST_QUEUE
 static void execute_queue(char *dest_ip, 
-    char *dest_port);
+    char *dest_port, char *outfile);
 
 static void *test_queue(void *args);
 
@@ -18,7 +18,7 @@ static void *init_receive(void *args);
 
 #ifdef TEST_REORDER
 static void execute_reorder(char *dest_ip,
-        char *dest_port);
+        char *dest_port, char *outfile);
 
 static bool isvalue_inarray(int val, 
         int *arr, int size); 
@@ -46,20 +46,20 @@ static void *test_queue(void *args);
  * @return 
  */
 int main(int argc, char *argv[]) {
-    printf("argc: %d\n", argc);
-if (argc == 3) {
+if (argc == 4) {
 #ifdef TEST_QUEUE
-    execute_queue(argv[1], argv[2]);
+    execute_queue(argv[1], argv[2], argv[3]);
 #elif TEST_REORDER
-    execute_reorder(argv[1], argv[2]);
+    execute_reorder(argv[1], argv[2], argv[3]);
 #elif TEST_RECV
-    printf("hello world\n");
-    execute_receive(argv[1], argv[2]);
+    execute_receive(argv[1], argv[2], argv[3]);
 #else
-    printf("[%s] - no test pattern foud \n", argv[0]);
+    printf("[%s] - no test flag foud \n", argv[0]);
 #endif
 } else {
     printf("[%s] - no test pattern found! \n", argv[0]);
+    printf("Usage: %s dest_ip dest_port output_file\n",
+            argv[0]);
 }
     return 0;
 }
@@ -70,17 +70,22 @@ if (argc == 3) {
  *
  * @param[in] dest_ip
  * @param[in] dest_port
+ * @param[in] outfile
  */
-static void execute_receive(char *dest_ip, char *dest_port) {
+static void execute_receive(char *dest_ip, char *dest_port,
+        char *outfile) {
     int dest_thr;
     pthread_t dest_id;
     struct debug_receiver_args *rx_args = NULL;
+
     rx_args = (struct debug_receiver_args*) 
         malloc(sizeof(struct debug_receiver_args*));
+
     rx_args->dest_port = dest_port;
-    rx_args->filename = (char *) RECEIVER_OUT;
+    rx_args->filename = outfile;
     printf("initiating receiver thread on %s:%s \n", 
             dest_ip, dest_port);
+
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
             rx_args);
     printf("dest_thr: %d\n", dest_thr);
@@ -102,9 +107,10 @@ static void execute_receive(char *dest_ip, char *dest_port) {
  *
  * @param[in] dest_ip
  * @param[in] dest_port
+ * @param[in] outfile
  */
 static void execute_reorder(char *dest_ip, 
-        char *dest_port) {
+        char *dest_port, char *outfile) {
     clock_t start = clock(), diff;
     int msec;
     int i = 0;
@@ -119,7 +125,7 @@ static void execute_reorder(char *dest_ip,
     rx_args = (struct debug_receiver_args *)
         malloc(sizeof(struct debug_receiver_args*));
 
-    rx_args->filename = (char *) RECEIVER_OUT;
+    rx_args->filename = outfile;
     rx_args->dest_port = dest_port;
     
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
@@ -160,19 +166,6 @@ static void execute_reorder(char *dest_ip,
         sleep(1);
     }
     
-    diff = clock() - start;
-    msec = diff * 1000 / CLOCKS_PER_SEC; 
-    while (msec < RUNTIME) {
-        diff = clock() - start;
-        msec = diff * 1000 / CLOCKS_PER_SEC;
-    }
-    /*printf("**************\n");*/
-    /*printf("killing threads bitches\n");*/
-    /*pthread_kill(dest_id, SIGKILL);*/
-    /*pthread_kill(queue_id, SIGKILL);*/
-    /*pthread_kill(pool_id, SIGKILL);*/
-    /*printf("**************\n");*/
-
     pthread_join(dest_id, NULL);
     pthread_join(queue_id, NULL);
     pthread_join(pool_id, NULL);
@@ -280,8 +273,10 @@ static void fill_packet(int seq_number,
  *
  * @param[in] dest_ip
  * @param[in] dest_port
+ * @param[in] outfile
  */
-static void execute_queue(char *dest_ip, char *dest_port) {
+static void execute_queue(char *dest_ip, char *dest_port,
+        char *outfile) {
     int dest_thr, queue_thr, test_thr;
     pthread_t dest_id, queue_id, test_id;
     queue_t* que = NULL;
@@ -290,7 +285,7 @@ static void execute_queue(char *dest_ip, char *dest_port) {
     rx_args = (struct debug_receiver_args *)
         malloc(sizeof(struct debug_receiver_args*));
 
-    rx_args->filename = RECEIVER_OUT;
+    rx_args->filename = outfile;
     rx_args->dest_port = dest_port;
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
             rx_args);

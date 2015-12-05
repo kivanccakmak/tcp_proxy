@@ -1,36 +1,30 @@
 GCC = gcc
+WALL = -Wall
 DEBUG_FLAG = -ggdb
 LEAK_FLAG = --leak-check=full
 LOG_FLAG = --log-file
-THREAD_FLAG = -lpthread
-
-TEST_INPUT = file_list/kivanc.txt
+LIBS = -lpthread
 VALGRIND = valgrind
 
-BOSS_RX_DEP = reorder.c link_receptor.c queue.c network.c 
-BOSS_RX_SRC = boss_server.c
-BOSS_RX_TARGET = debug_boss_rx
-BOSS_LOG = boss.log
-RECEIVE_PORT = 5000
-BOSS_RUN = $(RECEIVE_PORT)
+SERV_PORT = 5000
+DEST_IP = 127.0.0.1
+DEST_PORT = 5050
 
-CLIENT_TARGET = debug_client
-CLIENT_SRC = client.c
-CLIENT_DEP = file_read.c
-CLIENT_LOG = client.log
-CLIENT_DEST_IP = 127.0.0.1
-CLIENT_DEST_PORT = 5000
+TARGET = proxy_rx
+DBG_TARGET = debug_proxy_rx
+DEP = reorder.c link_receptor.c queue.c ../network/network.c 
+SRC = boss_server.c
+LOG = rx_proxy.log
 
-CLIENT_CONN_NUMBER = 3
-CLIENT_RUN = $(CLIENT_DEST_IP) $(CLIENT_DEST_PORT) \
-			 $(TEST_INPUT) $(CLIENT_CONN_NUMBER) 
+RUN = $(TARGET) $(SERV_PORT) $(DEST_IP) $(DEST_PORT)
+DBG_RUN = $(DBG_TARGET) $(SERV_PORT) $(DEST_IP) $(DEST_PORT) 
 
-$(CLIENT_TARGET): $(CLIENT_SRC) $(CLIENT_DEP)
-	$(GCC) $(CLIENT_SRC) $(CLIENT_DEP) -o $(CLIENT_TARGET) $(DEBUG_FLAG) $(THREAD_FLAG) 
-	$(VALGRIND) $(LOG_FLAG)=$(CLIENT_LOG) $(LEAK_FLAG) ./$(CLIENT_TARGET) $(CLIENT_RUN)  
-$(BOSS_RX_TARGET): $(BOSS_RX_SRC) $(BOSS_RX_DEP)
-	$(GCC) $(BOSS_RX_SRC) $(BOSS_RX_DEP) -o $(BOSS_RX_TARGET) $(DEBUG_FLAG) $(THREAD_FLAG)
-	$(VALGRIND) $(LOG_FLAG)=$(BOSS_LOG) $(LEAK_FLAG) ./$(BOSS_RX_TARGET) $(BOSS_RUN) 
+$(TARGET): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) 
+	./$(RUN) -DRX_PROXY
+$(DBG_TARGET): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(DBG_TARGET) $(DEBUG_FLAG) $(LIBS) $(WALL)
+	$(VALGRIND) $(LOG_FLAG)=$(LOG) $(LEAK_FLAG) ./$(DBG_RUN) -DRX_PROXY 
 clean:
-	rm -rf $(BOSS_RX_TARGET) $(CLIENT_TARGET)
+	rm -rf $(TARGET) $(DBG_TARGET)
 

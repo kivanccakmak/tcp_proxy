@@ -66,6 +66,5 @@ void *queue_wait(void *args);
 queue_t* queue_init(char *dest_ip, char *dest_port);
 
 #include "boss_server.h"
-#include "network.h"
 
 #endif

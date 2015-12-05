@@ -4,26 +4,29 @@ DEBUG_FLAG = -ggdb
 LEAK_FLAG = --leak-check=full
 LOG_FLAG = --log-file
 VALGRIND = valgrind
-SPLIT_LOG = split.log
+SPLIT_LOG = tx_proxy.log
 
 LOCAL_PORT = 5000
-DEST_IP = 192.168.2.202
-DEST_PORT = 5050
+RX_PROXY_IP = 192.168.2.202
+RX_PROXY_PORT = 5050
 
-SPLIT_TARGET = split
-SPLIT_LIBS = -lnetfilter_queue -lnfnetlink -lpthread
-SPLIT_SRC = src/split.c 
-SPLIT_DEP = ../relay/network.c
-SPLIT_DEP = ../relay/network.c
-DEBUG_TARGET = debug_split
-GDB_FLAG = -g
+TARGET = proxy_tx 
+DBG_TARGET = debug_proxy_tx
+SRC = src/split.c 
+DEP = ../relay/network.c
+LIBS = -lnetfilter_queue -lnfnetlink -lpthread
 
-SPLIT_RUN = $(SPLIT_TARGET) $(LOCAL_PORT) $(DEST_IP) $(DEST_PORT)
+RUN = $(TARGET) $(LOCAL_PORT) $(RX_PROXY_IP) \
+	  $(RX_PROXY_PORT)
 
-$(SPLIT_TARGET): $(SPLIT_SRC) $(SPLIT_DEP) 
-	$(GCC) $(SPLIT_SRC) $(SPLIT_DEP) -o $(SPLIT_TARGET) $(DEBUG_FLAG) $(SPLIT_LIBS) $(WALL)
-	$(VALGRIND) $(LOG_FLAG)=$(SPLIT_LOG) $(LEAK_FLAG) ./$(SPLIT_RUN) 
-$(DEBUG_TARGET): $(SPLIT_SOURCES) 
-	$(GCC) $(GDB_FLAG) $(SPLIT_SOURCES) -o $(DEBUG_TARGET) $(SPLIT_LIBRARIES) 
+DBG_RUN = $(DBG_TARGET) $(LOCAL_PORT) $(RX_PROXY_IP)\
+		  $(RX_PROXY_PORT)
+
+$(TARGET): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS)
+	./$(RUN) -DTX_PROXY
+$(DBG_TARGET): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(DBG_TARGET) $(DEBUG_FLAG) $(LIBS) $(WALL)
+	$(VALGRIND) $(LOG_FLAG)=$(SPLIT_LOG) $(LEAK_FLAG) ./$(DBG_RUN) -DTX_PROXY
 clean:
-	rm -rf $(SPLIT_TARGET)
+	rm -rf $(TARGET) $(DBG_TARGET)

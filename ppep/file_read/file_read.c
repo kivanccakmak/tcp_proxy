@@ -1,7 +1,8 @@
 #include "file_read.h"
 
 /**
- * @brief 
+ * @brief returns file size in 
+ * terms of Bytes
  *
  * @param fp
  *

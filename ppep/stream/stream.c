@@ -3,6 +3,7 @@
 static void stream(char *ip_addr, char *port,
         FILE *fp);
 
+#ifdef STREAM
 int main(int argc, char *argv[]) {
     if (argc != 4) {
         printf("Wrong Usage\n");
@@ -20,6 +21,7 @@ int main(int argc, char *argv[]) {
     fp = fopen(fname, "a+");
     stream(ip_addr, port, fp);
 }
+#endif
 
 /**
  * @brief 
