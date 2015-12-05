@@ -12,6 +12,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <stdbool.h>
 
 #include <netinet/in.h>
 #include <netinet/ether.h>

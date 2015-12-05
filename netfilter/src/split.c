@@ -153,6 +153,7 @@ void *pass_payload(void *args)
     struct addrinfo *addr;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
+    bool exit_flag = false;
     socklen_t sin_size;
     int split_sock, tx_sock;
     char src_ip[INET6_ADDRSTRLEN];
@@ -207,32 +208,34 @@ void *pass_payload(void *args)
                 src_ip, src_port);
         while (1) {
             rv = poll(&pfd, 1, -1);
-            while (recv_count < (int) BUFF_SIZE) {
-                numbytes = recv(split_sock, raw_buf+recv_count, 
-                        BUFF_SIZE-recv_count, 0);
-                if (numbytes > 0) {
-                    recv_count += numbytes;
-                }
-            }
-            printf("recv_count: %d\n", recv_count);
-            printf("raw_buf: %s\n", raw_buf);
             recv_count = 0;
             numbytes = 0;
             send_count = 0;
-            printf("***************************\n");
-            while (send_count < (int) BUFF_SIZE) {
-                printf("numbytes: %d\n", numbytes);
-                printf("raw_buf: %s\n", raw_buf+send_count);
+            while ((recv_count < (int) BUFF_SIZE) 
+                    & (exit_flag == false)){  
+                numbytes = recv(split_sock, raw_buf+recv_count, 
+                        BUFF_SIZE-recv_count, 0);
+                if (numbytes > 0) 
+                    recv_count += numbytes;
+                if (numbytes == 0) {
+                    printf("setting exit flag \n");
+                    exit_flag = true;
+                }
+            }
+            /*printf("recv_count: %d\n", recv_count);*/
+            /*printf("raw_buf: %s\n", raw_buf);*/
+            while (send_count < recv_count) {
                 numbytes = write(tx_sock, raw_buf+send_count,
-                        BUFF_SIZE-send_count);
+                        recv_count-send_count);
                 if (numbytes > 0) {
                     send_count += numbytes;
                 }
-                if (numbytes == 0) {
-                    break;
-                }
             }
-            printf("***************************\n");
+            if (exit_flag) {
+                close(split_sock);
+                close(tx_sock);
+                exit(0);
+            }
             raw_buf = (char *) malloc(BUFF_SIZE);
         }
     }

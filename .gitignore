@@ -2,6 +2,7 @@
 **/atom
 stream/stream
 netfilter/src/split
+netfilter/split
 receive/receive
 **/split.log
 netfilter_max/*
