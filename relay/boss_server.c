@@ -34,6 +34,8 @@ int main(int argc, char * argv[]){
         // get port number of server
         char *dest_ip, *dest_port, *server_port;
         int queue_thr, pool_thr;
+        struct packet_pool *pool = NULL;
+
         pthread_t queue_id, pool_id;
         cb_reord_args_t *reord_args = (cb_reord_args_t *)
             malloc(sizeof(cb_reord_args_t*));
@@ -47,7 +49,6 @@ int main(int argc, char * argv[]){
         queue_thr = pthread_create(&queue_id, NULL, &queue_wait,
             (void *) queue);
 
-        struct packet_pool *pool = NULL;
         pool = packet_pool_init();
         reord_args->queue = queue;
         reord_args->pool = pool;
