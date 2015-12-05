@@ -2,6 +2,7 @@
 
 static void get_packets(char *port, FILE *fp);
 
+#ifdef RECV
 int main(int argc, char *argv[]) 
 {
 
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
     get_packets(port, fp);
     return 0;
 }
+#endif
 
 
 /**

@@ -7,7 +7,7 @@ RECV_SRC = receive.c
 OUTPUT = output.txt
 
 $(RECV_TARGET): $(RECV_SRC)
-	$(GCC) $(RECV_SRC) -o $(RECV_TARGET)
+	$(GCC) $(RECV_SRC) -o $(RECV_TARGET) -DRECV
 	./$(RECV_TARGET) $(PORT) $(OUTPUT)
 clean:
 	rm -rf $(RECV_TARGET) $(OUTPUT)
