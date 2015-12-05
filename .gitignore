@@ -1,7 +1,10 @@
 **/*.o
+**/*.pcapng
+**/*.pcap
 sniffs/*
 **/atom
 stream/stream
+ppep/receive/receive
 netfilter/src/split
 netfilter/split
 receive/receive
