@@ -31,8 +31,8 @@ int main(int argc, char *argv[]) {
 static void stream(char *ip_addr, char *port, FILE *fp)
 { 
     int conn_res = 0, sockfd;
-    int byte_count = 0, temp_count = 0;
-    int file_size = 0, amount = 0;
+    int byte_count = 0, temp_count = 0, capacity = 0;
+    int file_size = 0, amount = 0, residue = 0;
     char *thr_buff;
 
     //Initialize sockaddr_in struct to connect to dest
@@ -55,10 +55,17 @@ static void stream(char *ip_addr, char *port, FILE *fp)
     file_size = get_file_size(fp);
 
     while (byte_count < file_size) {
-        read_file(fp, byte_count, byte_count + BLOCKSIZE, thr_buff);
-        while (temp_count < BLOCKSIZE) {
+        if (byte_count + BLOCKSIZE < file_size) {
+            read_file(fp, byte_count, byte_count + BLOCKSIZE, thr_buff);
+            capacity = BLOCKSIZE;
+        } else {
+            residue = file_size - byte_count;
+            read_file(fp, byte_count, byte_count + residue, thr_buff);
+            capacity = residue;
+        }
+        while (temp_count < capacity) {
             amount = write(sockfd, thr_buff+temp_count, 
-                    BLOCKSIZE-temp_count); 
+                    capacity-temp_count); 
             if (amount > 0) {
                 temp_count += amount;
             }
@@ -66,5 +73,4 @@ static void stream(char *ip_addr, char *port, FILE *fp)
         byte_count += temp_count;
         temp_count = 0;
     }
-
 } 

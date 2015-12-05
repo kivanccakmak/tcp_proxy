@@ -10,5 +10,5 @@ $(RECV_TARGET): $(RECV_SRC)
 	$(GCC) $(RECV_SRC) -o $(RECV_TARGET)
 	./$(RECV_TARGET) $(PORT) $(OUTPUT)
 clean:
-	rm -rf $(RECV_TARGET)
+	rm -rf $(RECV_TARGET) $(OUTPUT)
 

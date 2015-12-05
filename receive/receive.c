@@ -35,7 +35,7 @@ static void get_packets(char *port, FILE *fp)
     int rs_addr;
     int sockfd;
     int yes = 1;
-    int n = 1;
+    int n = 1, i = 0;
     int recv_count = 0;
     int set_val, bind_val, listen_val;
     struct sockaddr_storage their_addr;
@@ -85,7 +85,7 @@ static void get_packets(char *port, FILE *fp)
     printf("end destination accepted connection \n");
 
     while (n > 0) {
-        memset(buffer, '\0', sizeof(buffer));
+        memset(buffer, '\0', sizeof(buffer) - 1);
         while (recv_count < BLOCKSIZE) {
             n = recv(sockfd, buffer+recv_count, BLOCKSIZE-recv_count, 0);
             if (n > 0) {
@@ -100,8 +100,18 @@ static void get_packets(char *port, FILE *fp)
         recv_count = 0;
         fprintf(fp, "%s", buffer);
     }
-    fprintf(fp, "%s", buffer);
-    fprintf(fp, "%s", "\0");
+    printf("after while loop\n");
+    printf("buffer: %s\n", buffer);
+    printf("recv_count: %d\n", recv_count);
+    if (recv_count > 0) {
+        for (i = 0; i < recv_count; i++) {
+            if (buffer[i] != EOF) {
+                fprintf(fp, "%c", buffer[i]);
+            }
+            printf("buffer[%d]:%c\n", i, buffer[i]);
+        }
+        /*fprintf(fp, "%*s", recv_count, buffer);*/
+    }
     fclose(fp);
 }
 
