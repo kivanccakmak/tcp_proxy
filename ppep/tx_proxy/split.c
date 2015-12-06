@@ -82,12 +82,14 @@ int main(int argc, char *argv[])
 static void *run_controller(void *args)
 {
     int i = 0;
+    int thr_res = 0;
     struct controller_args *cntrl_args = NULL;
     struct link *tcp_link = NULL;
     struct link *temp_link = NULL;
     struct link_control *controller = NULL;
     char *dest_ip = NULL;
     char *dest_port = NULL;
+    bool lap = true;
 
     cntrl_args = (struct controller_args*) args;
     tcp_link = (struct link*) malloc(sizeof(struct link*));
@@ -112,13 +114,91 @@ static void *run_controller(void *args)
             temp_link = tcp_link;
             pthread_t tx_id;
             sleep(1);
-            pthread_create(&tx_id, NULL, &tx_chain, tcp_link);  
-            tcp_link = (struct link*) malloc(sizeof(struct link*));
+            thr_res = pthread_create(&tx_id, 
+                    NULL, &tx_chain, tcp_link);  
+            tcp_link = (struct link*) 
+                malloc(sizeof(struct link*));
         }
-        sleep(5);
+        lap = (controller->head != NULL);
+        tcp_link = controller->head;
+        while (lap) {
+            temp_link = tcp_link->prev;
+            if (temp_link == NULL) {
+                lap = false;
+            } else{
+                pthread_mutex_lock(&tcp_link->lock);
+                tcp_link->state = PASSIVE;
+                pthread_mutex_unlock(&tcp_link->lock);
+                pthread_cond_wait(&tcp_link->cond, &tcp_link->lock);
+
+            }
+        }
+        tcp_link = (struct link*) malloc(sizeof(struct link*));
+        temp_link = (struct link*) malloc(sizeof(struct link*));
+        controller->begin = NULL;
+        controller->head = NULL;
+    }
+}
 
 
-        //
+/**
+ * @brief Sinlge TCP connection thread
+ * that gets raw data from netfilter
+ * queue and passes towards end destination
+ *
+ * @param args
+ *
+ * @return 
+ */
+static void *tx_chain(void *args) 
+{
+    struct cb_tx_args *tx_args = NULL;
+    struct encaps_packet packet;
+    struct link *tx_link;
+    int ind = 0;
+    int count = 0, send_res = 0;
+    int fd;
+    proxy_buff *buff;
+    pthread_t id = pthread_self();
+
+    tx_args = (struct cb_tx_args*)
+        malloc(sizeof(struct cb_tx_args*));
+    buff = (proxy_buff*) malloc(sizeof(proxy_buff*));
+    tx_link = (struct link*)
+        malloc(sizeof(struct link*));
+
+    tx_args = (struct cb_tx_args*) args;
+    buff = tx_args->buff;
+    tx_link = tx_args->tx_link;
+    fd = tx_link->fd;
+
+    while (1) {
+        pthread_mutex_lock(&buff->lock);
+        if (buff->set_ind > buff->get_ind) {
+            ind = buff->get_ind;
+            packet.seq = ind;
+            memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
+            buff->get_ind++;
+            pthread_mutex_unlock(&buff->lock);
+            count = 0;
+            while (count < BUFF_SIZE) {
+                send_res = send(fd, 
+                    &((unsigned char*) &packet)[count],
+                        BUFF_SIZE-count, 0);
+                if (send_res > 0)
+                    count += send_res;
+            }
+        } else {
+            pthread_mutex_unlock(&buff->lock);
+            sleep(2);
+        }  
+        pthread_mutex_lock(&tx_link->lock);
+        if (tx_link->state == PASSIVE) {
+            tx_link->state = CLOSED;
+            pthread_mutex_unlock(&tx_link->lock);
+            pthread_exit(&id);
+        }
+        pthread_mutex_unlock(&tx_link->lock);
     }
 }
 
@@ -161,6 +241,8 @@ static void set_link(char *dest_ip, char *dest_port,
     } else {
         tcp_link->src_port = ntohs(server.sin_port);
     }
+    pthread_mutex_init(&tcp_link->lock, NULL);
+    pthread_cond_init(&tcp_link->cond, NULL);
 }
 
 static void *tx_chain(void *args)
@@ -191,7 +273,7 @@ static controller_args* set_controller_args(char *dest_ip,
     cntrl_args->dest_port = dest_port;
     cntrl_args->buff = buff;
     cntrl_args->conn_number = CONN_NUMBER:
-    return cntrl_args;
+        return cntrl_args;
 }
 
 /**
@@ -227,12 +309,12 @@ static struct split_args* set_split_args(char *local_port)
 
 static void *queuer_loop(void __attribute__((unused)) *unused)
 {
-	struct nfq_handle *h;
-	struct nfq_q_handle *qh;
-	struct nfnl_handle *nh;
+    struct nfq_handle *h;
+    struct nfq_q_handle *qh;
+    struct nfnl_handle *nh;
 
-	int *sockfd, fd, i, ret;
-	char buf[QUEUER_BUF_SIZE];
+    int *sockfd, fd, i, ret;
+    char buf[QUEUER_BUF_SIZE];
     ssize_t rc;
     char *dest_ip, *dest_port;
 
@@ -250,11 +332,11 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
     }
 
     printf("unbinding existing nf_queue handler "
-              "for AF_INET (if any) \n");
+            "for AF_INET (if any) \n");
     nfq_unbind_pf(h, AF_INET);
 
     printf("binding nfnetlink_queue as "
-              "nf_queue handler for AF_INET\n");
+            "nf_queue handler for AF_INET\n");
     ret = nfq_bind_pf(h, AF_INET);
     if (ret < 0) {
         printf("Failed to bind NFQ handler! [RET = %d] \n", ret);
@@ -445,8 +527,8 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh,
 {
     unsigned char *buffer;
     struct ipv4_packet *ip4;
-	int id = 0, ret;
-	struct nfqnl_msg_packet_hdr *ph;
+    int id = 0, ret;
+    struct nfqnl_msg_packet_hdr *ph;
 
     printf("**********************\n");
     printf("in nfqueue_get_syn\n");

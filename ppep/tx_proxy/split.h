@@ -34,6 +34,7 @@
 #define INITIAL_CAPACITY 1000
 #define CONN_NUMBER 5
 
+#define CLOSED -1
 #define ACTIVE 1
 #define PASSIVE 0
 
@@ -132,6 +133,7 @@ struct link{
     struct link *next;
     struct link *prev;
     pthread_mutex_t lock;
+    pthread_cond_t cond;
 };
 
 /**
@@ -141,6 +143,11 @@ struct link{
 struct link_control{
     struct link *head;
     struct link *begin;
+};
+
+struct tx_args{
+    proxy_buff *buff;
+    struct link *tx_link;
 };
 
 #define QUEUER_BUF_SIZE 10000
