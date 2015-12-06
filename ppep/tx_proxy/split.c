@@ -15,6 +15,12 @@ static struct listen_args* set_listen_args(
 
 static int set_tx_sock(char *dest_ip, char *dest_port); 
 
+static void add2buff(proxy_buff *buff, char *raw_buf); 
+
+static struct split_args* set_split_args(char *local_port);
+
+static void *get_payload(void *args); 
+
 int main(int argc, char *argv[])
 {
 
@@ -26,24 +32,28 @@ int main(int argc, char *argv[])
 
     int ret;
     char *dest_ip, *dest_port, *local_port;
-    struct listen_args *proxy;
-    pthread_t queuer, passer;
+    struct split_args *split = NULL;
+    pthread_t queuer, getter;
+
+    local_port = argv[1];
+    dest_ip = argv[2];
+    dest_port = argv[3];
+
+    split = set_split_args(local_port);
 
     ret = pthread_create(&queuer, NULL, queuer_loop, NULL);
     if (ret) {
         printf("Failed to create queuer thread! [RET = %d]", ret);
     }
 
-    local_port = argv[1];
-    dest_ip = argv[2];
-    dest_port = argv[3];
-    proxy = set_listen_args(dest_ip, dest_port, local_port);
-
-    ret = pthread_create(&passer, NULL, 
-            pass_payload, (void *) proxy);
+    ret = pthread_create(&getter, NULL, &get_payload,
+            (void *) split);
+    if (ret) {
+        printf("Failed to initiate payload getter. [RET = %d]", ret);
+    }
 
     pthread_join(queuer, NULL);
-    pthread_join(passer, NULL);
+    pthread_join(getter, NULL);
     return 0;
 }
 
@@ -56,17 +66,26 @@ int main(int argc, char *argv[])
  *
  * @return 
  */
-static struct listen_args* set_listen_args(char *dest_ip, char *dest_port,
-        char *local_port) {
+static struct split_args* set_split_args(char *local_port)
+{
 
-    struct listen_args *proxy = 
-        (struct listen_args*) malloc(sizeof(struct listen_args*));
+    struct split_args *split = 
+        (struct split_args*) malloc(sizeof(struct split_args*));
+    split->local_port = local_port;
 
-    proxy->local_port = local_port;
-    proxy->dest_port = dest_port;
-    proxy->dest_ip = dest_ip;
+    proxy_buff *buff = 
+        (proxy_buff*) malloc(sizeof(proxy_buff*));
 
-    return proxy;
+    buff->rx_byte = 0;
+    buff->tx_byte = 0;
+    buff->set_ind = 0;
+    buff->get_ind = 0;
+    buff->capacity = INITIAL_CAPACITY;
+    buff->buffer = (char **) 
+        malloc(sizeof(char*) * buff->capacity);
+
+    split->buff = buff;
+    return split;
 }
 
 static void *queuer_loop(void __attribute__((unused)) *unused)
@@ -135,51 +154,44 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
     pthread_exit(NULL);
 }
 
-/**
- * @brief Reads local socket and 
- * passes through the end destination
- *
- * @param[in] args
- *
- * @return 
- */
-void *pass_payload(void *args) 
+static void *get_payload(void *args) 
 {
-    int rs_addr, rb, wb, numbytes;
-    int send_count = 0, recv_count = 0;
+    int rs_addr, numbytes = 0, recv_count = 0;
     int rv, yes = 1, set_val, bind_val, listen_val;
-    struct listen_args *proxy;
     struct addrinfo hints;
     struct addrinfo *addr;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
-    bool exit_flag = false;
-    socklen_t sin_size;
-    int split_sock, tx_sock;
+    struct split_args *split = NULL;
     char src_ip[INET6_ADDRSTRLEN];
     uint32_t src_port;
-    char *raw_buf = 
-        (char*) malloc(BUFF_SIZE);
+    bool exit_flag = false;
+    proxy_buff *buff = NULL;
+    char *local_port = NULL;
+    socklen_t sin_size;
+    int split_sock;
+    char *raw_buf = (char*) malloc(BUFF_SIZE);
 
-    proxy = (struct listen_args*) 
-        malloc(sizeof(struct listen_args*));
-    proxy = (struct listen_args*) args;
+    // get call back arguments
+    split = (struct split_args*) 
+        malloc(sizeof(struct split_args*));
+    buff = (proxy_buff *) malloc(sizeof(proxy_buff*));
+    local_port = split->local_port;
+    split = (struct split_args*) args;
+    buff = split->buff;
 
-    tx_sock = set_tx_sock(proxy->dest_ip, 
-            proxy->dest_port);
-
+    // set local socket file descriptor 
+    // to get data from nfqueue
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    rs_addr = getaddrinfo(NULL, proxy->local_port, 
-            &hints, &addr);
+    rs_addr = getaddrinfo(NULL, local_port, &hints, &addr);
     split_sock = socket(addr->ai_family, addr->ai_socktype,
             addr->ai_protocol);
-    set_val = 
-        setsockopt(split_sock, SOL_SOCKET, SO_REUSEADDR, &yes,
-                sizeof(int));
+    set_val = setsockopt(split_sock, SOL_SOCKET, 
+            SO_REUSEADDR, &yes, sizeof(int));
 
     if (addr == NULL) {
         fprintf(stderr, "server: failed to bind \n");
@@ -198,51 +210,67 @@ void *pass_payload(void *args)
     while (1) {
         split_sock = accept(split_sock, (struct sockaddr*)&their_addr,
                 &sin_size);
+
         pfd.fd = split_sock;
         pfd.events = POLLIN;
-        inet_ntop(their_addr.ss_family, 
+
+        inet_ntop(their_addr.ss_family,
                 get_in_ipaddr((struct sockaddr*)&their_addr),
                 src_ip, sizeof(src_ip));
-        src_port = get_in_portnum((struct sockaddr *)&their_addr);
-        printf("split: got connection from %s : %d \n", 
-                src_ip, src_port);
+        src_port = get_in_portnum((struct sockaddr*)&their_addr);
+
+        printf("got connection from %s : %d \n", src_ip, src_port);
         while (1) {
+            // poll() waits for file descriptor state change 
             rv = poll(&pfd, 1, -1);
             recv_count = 0;
-            numbytes = 0;
-            send_count = 0;
             while ((recv_count < (int) BUFF_SIZE) 
-                    & (exit_flag == false)){  
-                numbytes = recv(split_sock, raw_buf+recv_count, 
+                    & (exit_flag == false)) {
+                numbytes = recv(split_sock, raw_buf+recv_count,
                         BUFF_SIZE-recv_count, 0);
-                if (numbytes > 0) 
+                if (numbytes > 0)
                     recv_count += numbytes;
-                if (numbytes == 0) {
-                    printf("setting exit flag \n");
+                else
                     exit_flag = true;
-                }
-            }
-            /*printf("recv_count: %d\n", recv_count);*/
-            /*printf("raw_buf: %s\n", raw_buf);*/
-            while (send_count < recv_count) {
-                numbytes = write(tx_sock, raw_buf+send_count,
-                        recv_count-send_count);
-                if (numbytes > 0) {
-                    send_count += numbytes;
-                }
             }
             if (exit_flag) {
                 close(split_sock);
-                close(tx_sock);
                 exit(0);
             }
+            add2buff(buff, raw_buf);
             raw_buf = (char *) malloc(BUFF_SIZE);
         }
     }
 }
 
+/**
+ * @brief adds proxied payload to local 
+ * buffer and updates count variables 
+ * of proxy_buff pointer
+ *
+ * @param[out] buff
+ * @param[in] raw_buf
+ */
+static void add2buff(proxy_buff *buff, char *raw_buf) 
+{
+    bool extend = false;
+    int remained = 0;
 
+    pthread_mutex_lock(&buff->lock);
 
+    remained = buff->capacity - buff->set_ind;
+    extend = (remained) < (2 * (int) sizeof(char*));
+    if (extend) {
+        buff->capacity = buff->capacity * 2;
+        buff->buffer = (char **) realloc(buff->buffer,
+                sizeof(char*) * buff->capacity);
+    }
+    buff->buffer[buff->set_ind] = raw_buf;
+    buff->set_ind++;
+    buff->rx_byte += BUFF_SIZE;
+
+    pthread_mutex_unlock(&buff->lock);
+}
 
 /**
  * @brief  
