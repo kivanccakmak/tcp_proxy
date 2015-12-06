@@ -9,7 +9,8 @@
  *
  * @return 
  */
-uint32_t get_in_portnum(struct sockaddr *sa){
+uint32_t get_in_portnum(struct sockaddr *sa)
+{
     struct sockaddr_in* leg_temp;
     struct sockaddr_in6* cur_temp;
     uint32_t port;
@@ -37,7 +38,8 @@ uint32_t get_in_portnum(struct sockaddr *sa){
  *
  * @return 
  */
-void *get_in_ipaddr(struct sockaddr *sa){
+void *get_in_ipaddr(struct sockaddr *sa)
+{
     struct sockaddr_in* leg_temp;
     struct sockaddr_in6* cur_temp;
     if(sa->sa_family == AF_INET){

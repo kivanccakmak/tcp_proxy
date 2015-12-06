@@ -69,8 +69,8 @@ int main(int argc, char * argv[])
   * @param queue
   */
 static void server_listen(char* server_port, 
-        struct packet_pool *pool, queue_t *queue){
-
+        struct packet_pool *pool, queue_t *queue)
+{
     int sockfd, newfd;
     int yes = 1;
     int set_val, bind_val, listen_val, thr_val;
@@ -158,13 +158,12 @@ static void server_listen(char* server_port,
  */
 static void set_cb_rx_args(cb_rx_args_t *rx_args,
         int sockfd, queue_t *queue, struct packet_pool *pool,
-        int poll_timeout) {
-    
+        int poll_timeout) 
+{
     rx_args->sockfd = sockfd;
     rx_args->poll_timeout = poll_timeout;
     rx_args->pool = pool;
     rx_args->queue = queue;
-
 }
 
 /**
@@ -175,7 +174,8 @@ static void set_cb_rx_args(cb_rx_args_t *rx_args,
  *
  * @return 
  */
-static struct sigaction sig_init(){
+static struct sigaction sig_init()
+{
     struct sigaction sa;
     sa.sa_handler = sigchld_handler;
     sigemptyset(&sa.sa_mask);
@@ -195,7 +195,8 @@ static struct sigaction sig_init(){
  * @param[in] port
  * @param[out] addr
  */
-static void initialize_addr(char* port, struct addrinfo *addr){
+static void initialize_addr(char* port, struct addrinfo *addr)
+{
     struct addrinfo hints, *servinfo;
     int rs_addr;
     
@@ -222,7 +223,8 @@ static void initialize_addr(char* port, struct addrinfo *addr){
  *
  * @param s
  */
-static void sigchld_handler(int s){
+static void sigchld_handler(int s)
+{
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
@@ -231,7 +233,8 @@ static void sigchld_handler(int s){
  *
  * @param[out] hints
  */
-static void set_hints(struct addrinfo* hints){
+static void set_hints(struct addrinfo* hints)
+{
     hints->ai_family = AF_UNSPEC;
     hints->ai_socktype = SOCK_STREAM;
     hints->ai_flags = AI_PASSIVE;

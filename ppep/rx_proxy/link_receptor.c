@@ -15,8 +15,8 @@
  *
  * @return 
  */
-void *rx_chain(void *args){
-
+void *rx_chain(void *args)
+{
     int rv, numbytes = 0;
     int sockfd;
     unsigned long recv_count = 0;
@@ -71,18 +71,13 @@ void *rx_chain(void *args){
  * @param pool
  */
 void push2pool(char *raw_packet, 
-        struct packet_pool* pool) {
-    
-    printf("in push2pool\n");
-    printf("pool: %p\n", pool);
+        struct packet_pool* pool) 
+{
     bool wake_pool;
     bool full_capacity;
     int boundary_diff;
     encaps_packet_t *packet;
     packet = (encaps_packet_t *) raw_packet;
-
-    printf("seq: %d\n", packet->seq);
-    printf("raw: %s\n", packet->raw_packet);
 
     // Increase capacity pool->sequential numbers is FULL 
     full_capacity = ((pool->capacity - pool->count) <  2);
@@ -117,7 +112,5 @@ void push2pool(char *raw_packet,
     if (wake_pool) {
         pthread_cond_signal(&pool->cond);
     } 
-
     pthread_mutex_unlock(&pool->lock);
-    
 }

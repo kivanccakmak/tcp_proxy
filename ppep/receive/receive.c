@@ -83,13 +83,15 @@ static void get_packets(char *port, FILE *fp)
     listen_val = listen(sockfd, 1);
 
     printf("end destination waits connection \n");
-    sockfd = accept(sockfd, (struct sockaddr*)&their_addr, &sin_size);
+    sockfd = accept(sockfd, 
+            (struct sockaddr*)&their_addr, &sin_size);
     printf("end destination accepted connection \n");
 
     while (n > 0) {
         memset(buffer, '\0', sizeof(buffer) - 1);
         while (recv_count < BLOCKSIZE) {
-            n = recv(sockfd, buffer+recv_count, BLOCKSIZE-recv_count, 0);
+            n = recv(sockfd, buffer+recv_count, 
+                    BLOCKSIZE-recv_count, 0);
             if (n > 0) {
                 recv_count += n;
             } else {
@@ -116,5 +118,3 @@ static void get_packets(char *port, FILE *fp)
     }
     fclose(fp);
 }
-
-

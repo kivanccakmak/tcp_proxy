@@ -45,22 +45,23 @@ static void *test_queue(void *args);
  *
  * @return 
  */
-int main(int argc, char *argv[]) {
-if (argc == 4) {
+int main(int argc, char *argv[]) 
+{
+    if (argc == 4) {
 #ifdef TEST_QUEUE
-    execute_queue(argv[1], argv[2], argv[3]);
+        execute_queue(argv[1], argv[2], argv[3]);
 #elif TEST_REORDER
-    execute_reorder(argv[1], argv[2], argv[3]);
+        execute_reorder(argv[1], argv[2], argv[3]);
 #elif TEST_RECV
-    execute_receive(argv[1], argv[2], argv[3]);
+        execute_receive(argv[1], argv[2], argv[3]);
 #else
-    printf("[%s] - no test flag foud \n", argv[0]);
+        printf("[%s] - no test flag foud \n", argv[0]);
 #endif
-} else {
-    printf("[%s] - no test pattern found! \n", argv[0]);
-    printf("Usage: %s dest_ip dest_port output_file\n",
-            argv[0]);
-}
+    } else {
+        printf("[%s] - no test pattern found! \n", argv[0]);
+        printf("Usage: %s dest_ip dest_port output_file\n",
+                argv[0]);
+    }
     return 0;
 }
 
@@ -73,7 +74,8 @@ if (argc == 4) {
  * @param[in] outfile
  */
 static void execute_receive(char *dest_ip, char *dest_port,
-        char *outfile) {
+        char *outfile) 
+{
     int dest_thr;
     pthread_t dest_id;
     struct debug_receiver_args *rx_args = NULL;
@@ -110,7 +112,8 @@ static void execute_receive(char *dest_ip, char *dest_port,
  * @param[in] outfile
  */
 static void execute_reorder(char *dest_ip, 
-        char *dest_port, char *outfile) {
+        char *dest_port, char *outfile) 
+{
     clock_t start = clock(), diff;
     int msec;
     int i = 0;
@@ -127,7 +130,7 @@ static void execute_reorder(char *dest_ip,
 
     rx_args->filename = outfile;
     rx_args->dest_port = dest_port;
-    
+
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
             (void *) rx_args);
     printf("dest_thr: %d\n", dest_thr);
@@ -165,7 +168,7 @@ static void execute_reorder(char *dest_ip,
         push2pool((char *) packets[i], pool);
         sleep(1);
     }
-    
+
     pthread_join(dest_id, NULL);
     pthread_join(queue_id, NULL);
     pthread_join(pool_id, NULL);
@@ -187,7 +190,8 @@ static void execute_reorder(char *dest_ip,
  * @return 
  */
 static bool isvalue_inarray(int val, 
-        int *arr, int size) {
+        int *arr, int size) 
+{
     int i;
     for (i = 0; i < size; i++) {
         if (arr[i] == val) {
@@ -212,7 +216,8 @@ static bool isvalue_inarray(int val,
  *
  * @return 
  */
-static int* generate_index(int size) {
+static int* generate_index(int size) 
+{
     int count = 0, val;
     int *index_vals = NULL;
     index_vals = (int *) 
@@ -247,7 +252,8 @@ static int* generate_index(int size) {
  * @param[out] packet
  */
 static void fill_packet(int seq_number, 
-        encaps_packet_t *packet) {
+        encaps_packet_t *packet) 
+{
     int i = 0;
     char randomletter = 'A' + (rand() % 26);
     packet->seq = seq_number;
@@ -276,7 +282,8 @@ static void fill_packet(int seq_number,
  * @param[in] outfile
  */
 static void execute_queue(char *dest_ip, char *dest_port,
-        char *outfile) {
+        char *outfile) 
+{
     int dest_thr, queue_thr, test_thr;
     pthread_t dest_id, queue_id, test_id;
     queue_t* que = NULL;
@@ -306,7 +313,7 @@ static void execute_queue(char *dest_ip, char *dest_port,
     printf("queue_thr: %d\n", queue_thr);
 
     sleep(5); 
-    
+
     test_thr = pthread_create(&test_id, NULL, 
             &test_queue, (void *) que);
     printf("test_thr: %d\n", test_thr);
@@ -329,8 +336,8 @@ static void execute_queue(char *dest_ip, char *dest_port,
  *
  * @return 
  */
-static void *test_queue(void *args) {
-
+static void *test_queue(void *args) 
+{
     int count, i = 0;
     int index = 0;
     char *msg;
@@ -378,10 +385,8 @@ static void *test_queue(void *args) {
  *
  * @return 
  */
-static void *init_receive(void *args) {
-
-    printf("in init_receive thread \n");
-
+static void *init_receive(void *args) 
+{
     char *dest_port = NULL;
     FILE *fp = NULL;
 
@@ -434,12 +439,8 @@ static void *init_receive(void *args) {
         exit(1);
     }
 
-
     sin_size = sizeof(their_addr);
-
-    printf("end destination listens \n");
     listen_val = listen(sockfd, 1);
-    printf("listen_val: %d\n", listen_val);
 
     printf("end destination waits connection \n");
     sockfd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
