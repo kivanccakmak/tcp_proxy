@@ -32,6 +32,10 @@
 
 #define BUFF_SIZE 10
 #define INITIAL_CAPACITY 1000
+#define CONN_NUMBER 5
+
+#define ACTIVE 1
+#define PASSIVE 0
 
 struct ipv4_packet{
     struct iphdr iph;
@@ -103,6 +107,41 @@ struct split_args{
     proxy_buff *buff;
 };
 
+/**
+ * @brief call-back arguments
+ * of tcp_controller thread, who
+ * opens and closes TCP-connections
+ */
+struct controller_args{
+    int conn_number;
+    char *dest_ip;
+    char *dest_port;
+    proxy_buff *buff;
+};
+
+/**
+ * @brief each tx_chain initiated
+ * with link struct, state information
+ * would be passed there by controller
+ */
+struct link{
+    int src_port;
+    int fd;
+    int id;
+    int state;
+    struct link *next;
+    struct link *prev;
+    pthread_mutex_t lock;
+};
+
+/**
+ * @brief controller accesses link
+ * list
+ */
+struct link_control{
+    struct link *head;
+    struct link *begin;
+};
 
 #define QUEUER_BUF_SIZE 10000
 

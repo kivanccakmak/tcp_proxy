@@ -6,9 +6,9 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa,
         void *data);
 
-static void *queuer_loop(void __attribute__((unused)) *unused);
+static void* queuer_loop(void __attribute__((unused)) *unused);
 
-static void *pass_payload(void *args);
+static void* pass_payload(void *args);
 
 static struct listen_args* set_listen_args(
         char *dest_ip, char *dest_port, char *local_part);
@@ -19,7 +19,13 @@ static void add2buff(proxy_buff *buff, char *raw_buf);
 
 static struct split_args* set_split_args(char *local_port);
 
-static void *get_payload(void *args); 
+static void* get_payload(void *args); 
+
+static controller_args* set_controller_args(char *dest_ip, 
+    char *dest_port, proxy_buff *buff); 
+
+static void set_link(char *dest_ip, char *dest_port,
+        struct link *tcp_link);
 
 int main(int argc, char *argv[])
 {
@@ -33,28 +39,159 @@ int main(int argc, char *argv[])
     int ret;
     char *dest_ip, *dest_port, *local_port;
     struct split_args *split = NULL;
-    pthread_t queuer, getter;
+    struct controller_args *cntrl_args = NULL;
+    pthread_t queuer_id, getter_id, controller_id;
 
     local_port = argv[1];
     dest_ip = argv[2];
     dest_port = argv[3];
 
     split = set_split_args(local_port);
+    cntrl_args = set_controller_args(dest_ip,
+            dest_port, split->buff);
 
-    ret = pthread_create(&queuer, NULL, queuer_loop, NULL);
+    ret = pthread_create(&queuer_id, NULL, queuer_loop, NULL);
     if (ret) {
         printf("Failed to create queuer thread! [RET = %d]", ret);
     }
 
-    ret = pthread_create(&getter, NULL, &get_payload,
+    ret = pthread_create(&getter_id, NULL, &get_payload,
             (void *) split);
     if (ret) {
         printf("Failed to initiate payload getter. [RET = %d]", ret);
     }
 
-    pthread_join(queuer, NULL);
-    pthread_join(getter, NULL);
+    ret = pthread_create(&controller_id, NULL, &run_controller,
+            (void *) cntrl_args);
+
+    pthread_join(queuer_id, NULL);
+    pthread_join(getter_id, NULL);
+    pthread_join(controller_id, NULL);
     return 0;
+}
+
+
+/**
+ * @brief TCP connection controller function,
+ * which opens and closes TCP connections.
+ *
+ * @param[in] args
+ *
+ * @return 
+ */
+static void *run_controller(void *args)
+{
+    int i = 0;
+    struct controller_args *cntrl_args = NULL;
+    struct link *tcp_link = NULL;
+    struct link *temp_link = NULL;
+    struct link_control *controller = NULL;
+    char *dest_ip = NULL;
+    char *dest_port = NULL;
+
+    cntrl_args = (struct controller_args*) args;
+    tcp_link = (struct link*) malloc(sizeof(struct link*));
+    temp_link = (struct link*) malloc(sizeof(struct link*));
+    dest_ip = cntrl_args->dest_ip;
+    dest_port = cntrl_args->dest_port;
+
+    while (1) {
+        for (i = 0; i < cntrl_args->conn_number; i++) {
+            set_link(dest_ip, dest_port, tcp_link);
+            if (controller->begin == NULL) { 
+                controller->begin = tcp_link;
+            }else if (controller->head == NULL) { 
+                tcp_link->prev = controller->begin;
+                controller->begin->next = tcp_link;
+                controller->head = tcp_link;
+            }else {
+                tcp_link->prev = temp_link;
+                temp_link->next = tcp_link;
+                controller->head = tcp_link;
+            }
+            temp_link = tcp_link;
+            pthread_t tx_id;
+            sleep(1);
+            pthread_create(&tx_id, NULL, &tx_chain, tcp_link);  
+            tcp_link = (struct link*) malloc(sizeof(struct link*));
+        }
+        sleep(5);
+
+
+        //
+    }
+}
+
+/**
+ * @brief sets network parameters of link struct, 
+ * which would be passed to tx_chain() thread
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ * @param[out] tcp_link
+ */
+static void set_link(char *dest_ip, char *dest_port,
+        struct link *tcp_link)
+{
+    struct sockaddr_in server;
+    int sockfd;
+    int conn_res = 0, get_res = 0;
+    socklen_t len = sizeof(server);
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    server.sin_addr.s_addr = inet_addr(dest_ip);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(dest_port));
+
+    conn_res = connect(sockfd, (struct sockaddr*)&server,
+            sizeof(server));
+    if (conn_res > 0) {
+        perror("connection failed. Error");
+        exit(0);
+    } else {
+        tcp_link->fd = sockfd;
+    }
+
+    get_res = 
+        getsockname(sockfd, (struct sockaddr *)&server, &len);
+    if (get_res == -1) {
+        perror("getsockname");
+        exit(0);
+    } else {
+        tcp_link->src_port = ntohs(server.sin_port);
+    }
+}
+
+static void *tx_chain(void *args)
+{
+    // state from link->state
+    // get fd  
+    // get proxy
+}
+
+/**
+ * @brief set call-back arguments 
+ * of controller thread.
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ * @param[in] buff
+ *
+ * @return 
+ */
+static controller_args* set_controller_args(char *dest_ip,
+        char *dest_port, proxy_buff *buff) 
+{
+    struct controller_args *cntrl_args = NULL;
+    cntrl_args = (struct controller_args*)
+        malloc(sizeof(struct controller_args*));
+
+    cntrl_args->dest_ip = dest_ip;
+    cntrl_args->dest_port = dest_port;
+    cntrl_args->buff = buff;
+    cntrl_args->conn_number = CONN_NUMBER:
+    return cntrl_args;
 }
 
 /**
