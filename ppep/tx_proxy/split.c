@@ -27,6 +27,10 @@ static controller_args* set_controller_args(char *dest_ip,
 static void set_link(char *dest_ip, char *dest_port,
         struct link *tcp_link);
 
+static void *run_controller(void *args);
+
+static void *tx_chain(void *args); 
+
 int main(int argc, char *argv[])
 {
 
@@ -129,14 +133,23 @@ static void *run_controller(void *args)
                 pthread_mutex_lock(&tcp_link->lock);
                 tcp_link->state = PASSIVE;
                 pthread_mutex_unlock(&tcp_link->lock);
-                pthread_cond_wait(&tcp_link->cond, &tcp_link->lock);
-
+                sleep(1);
+                pthread_mutex_lock(&tcp_link->lock);
+                if (tcp_link->state == CLOSED) {
+                    printf("link closed\n");
+                }
+                pthread_mutex_unlock(&tcp_link->lock);
             }
+        }
+        if (controller->begin != NULL) {
+            printf("controller->begin != NULL\n");
+            exit(0);
+        } else if (controller->head != NULL) {
+            printf("controller->head != NULL\n");
+            exit(0);
         }
         tcp_link = (struct link*) malloc(sizeof(struct link*));
         temp_link = (struct link*) malloc(sizeof(struct link*));
-        controller->begin = NULL;
-        controller->head = NULL;
     }
 }
 
@@ -155,10 +168,9 @@ static void *tx_chain(void *args)
     struct cb_tx_args *tx_args = NULL;
     struct encaps_packet packet;
     struct link *tx_link;
-    int ind = 0;
-    int count = 0, send_res = 0;
-    int fd;
     proxy_buff *buff;
+    int ind = 0, count = 0, send_res = 0;
+    int fd;
     pthread_t id = pthread_self();
 
     tx_args = (struct cb_tx_args*)
