@@ -3,7 +3,7 @@
 **/*.pcap
 sniffs/*
 **/atom
-stream/stream
+ppep/stream/stream
 ppep/receive/receive
 netfilter/src/split
 netfilter/split
