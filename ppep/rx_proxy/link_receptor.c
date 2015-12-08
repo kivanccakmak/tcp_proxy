@@ -53,6 +53,7 @@ void *rx_chain(void *args)
         pthread_mutex_lock(&pool->lock);
         push2pool((char *) raw_buf, pool);
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
+        recv_count = 0;
     }
     return NULL;
 }
