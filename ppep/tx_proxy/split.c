@@ -21,7 +21,7 @@ static struct split_args* set_split_args(char *local_port);
 
 static void* get_payload(void *args); 
 
-static struct controller_args* set_controller_args(char *dest_ip, 
+static struct cb_cntrl_args* set_controller_args(char *dest_ip, 
     char *dest_port, proxy_buff *buff); 
 
 static void set_link(char *dest_ip, char *dest_port,
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     int ret;
     char *dest_ip, *dest_port, *local_port;
     struct split_args *split = NULL;
-    struct controller_args *cntrl_args = NULL;
+    struct cb_cntrl_args *cntrl_args = NULL;
     pthread_t queuer_id, getter_id, controller_id;
 
     local_port = argv[1];
@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
     }
 
     pthread_join(queuer_id, NULL);
-    sleep(3);
     pthread_join(getter_id, NULL);
     pthread_join(controller_id, NULL);
     return 0;
@@ -102,25 +101,33 @@ static void *run_controller(void *args)
 {
     int i = 0;
     int thr_res = 0;
-    struct controller_args *cntrl_args = NULL;
-    struct link *tcp_link = NULL;
+    struct cb_cntrl_args *cntrl_args = NULL;
+    struct link **tcp_links = NULL;
     struct link *temp_link = NULL;
-    struct cb_tx_args *tx_args = NULL;
-    struct link_control *controller = NULL;
+    struct cb_tx_args **tx_args = NULL;
     char *dest_ip = (char *) malloc(sizeof(char*));;
     char *dest_port = (char *) malloc(sizeof(char*));
-    bool lap = true;
+    pthread_t **tx_ids;
 
-    controller = (struct link_control*)
-        malloc(sizeof(struct link_control*));
-    cntrl_args = (struct controller_args*)
-        malloc(sizeof(struct controller_args*));
-    cntrl_args = (struct controller_args*) args;
-    tcp_link = (struct link*) malloc(sizeof(struct link*));
-    temp_link = (struct link*) malloc(sizeof(struct link*));
-    tx_args = (struct cb_tx_args*) 
-        malloc(sizeof(struct cb_tx_args*));
+    cntrl_args = (struct cb_cntrl_args*)
+        malloc(sizeof(struct cb_cntrl_args*));
+    cntrl_args = (struct cb_cntrl_args*) args;
 
+    tcp_links = (struct link**) 
+        malloc(sizeof(struct link*) * cntrl_args->conn_number);
+    tx_ids = (pthread_t**)
+        malloc(sizeof(pthread_t*) * cntrl_args->conn_number);
+    tx_args = (struct cb_tx_args**)
+        malloc(sizeof(struct cb_tx_args*) * cntrl_args->conn_number);
+
+    for (i = 0; i < cntrl_args->conn_number; i++) {
+        tcp_links[i] = (struct link*) malloc(sizeof(struct link));
+        tx_ids[i] = (pthread_t *) malloc(sizeof(pthread_t));
+        tx_args[i] = (struct cb_tx_args*) malloc(sizeof(struct cb_tx_args));
+    }
+
+    printf("set pointer arrays\n");
+    temp_link = (struct link*) malloc(sizeof(struct link*)); 
     dest_ip = cntrl_args->dest_ip;
     dest_port = cntrl_args->dest_port;
     printf("%s:%s\n", dest_ip,dest_port);
@@ -129,62 +136,34 @@ static void *run_controller(void *args)
     while (1) {
         for (i = 0; i < cntrl_args->conn_number; i++) {
             printf("i: %d\n", i);
-            set_link(dest_ip, dest_port, tcp_link);
-            tx_args->buff = cntrl_args->buff;
-            tx_args->tx_link = tcp_link;
-            if (controller->begin == NULL) { 
-                controller->begin = tcp_link;
-            }else if (controller->head == NULL) { 
-                printf("controller->head == NULL\n");
-                tcp_link->prev = controller->begin;
-                controller->begin->next = tcp_link;
-                controller->head = tcp_link;
-            }else {
-                printf("else\n");
-                tcp_link->prev = temp_link;
-                temp_link->next = tcp_link;
-                controller->head = tcp_link;
-            }
-            temp_link = tcp_link;
-            pthread_t tx_id;
+            set_link(dest_ip, dest_port, tcp_links[i]);
+            printf("**\n");
+            printf("after set_link()\n");
+            printf("**\n");
+            tx_args[i]->buff = cntrl_args->buff;
+            tx_args[i]->tx_link = tcp_links[i];
+            printf("sizeof(tx_args[i]->tx_link :%d\n",
+                    (int) sizeof(tx_args[i]->tx_link));
             sleep(1);
-            thr_res = pthread_create(&tx_id, 
-                    NULL, &tx_chain, tx_args);  
-            tcp_link = (struct link*) 
-                malloc(sizeof(struct link*));
-            tx_args = (struct cb_tx_args*)
-                malloc(sizeof(struct cb_tx_args*));
+            printf("***\n");
+            printf("before tx_chain()\n");
+            printf("***\n");
+            thr_res = pthread_create(tx_ids[i], 
+                    NULL, &tx_chain, (void *) tx_args[i]);  
         }
-        lap = (controller->head != NULL);
-        tcp_link = controller->head;
-        while (lap) {
-            temp_link = tcp_link->prev;
-            if (temp_link == NULL) {
-                lap = false;
-            } else{
-                pthread_mutex_lock(&tcp_link->lock);
-                tcp_link->state = PASSIVE;
-                pthread_mutex_unlock(&tcp_link->lock);
-                sleep(1);
-                pthread_mutex_lock(&tcp_link->lock);
-                if (tcp_link->state == CLOSED) {
-                    printf("link closed\n");
-                }
-                pthread_mutex_unlock(&tcp_link->lock);
+        sleep(500);
+        for (i = 0; i < cntrl_args->conn_number; i++) {
+            pthread_mutex_lock(&tcp_links[i]->lock);
+            tcp_links[i]->state = PASSIVE;
+            pthread_mutex_unlock(&tcp_links[i]->lock);
+            sleep(1);
+            pthread_mutex_lock(&tcp_links[i]->lock);
+            if (tcp_links[i]->state == CLOSED) {
+                printf("link %d is closed \n", i);
             }
+            pthread_mutex_unlock(&tcp_links[i]->lock);
         }
-        if (controller->begin != NULL) {
-            printf("controller->begin != NULL\n");
-            exit(0);
-        } else if (controller->head != NULL) {
-            printf("controller->head != NULL\n");
-            exit(0);
-        }
-        tcp_link = (struct link*) malloc(sizeof(struct link*));
-        temp_link = (struct link*) malloc(sizeof(struct link*));
-        tx_args = (struct cb_tx_args*) 
-            malloc(sizeof(struct cb_tx_args*));
-    }
+   }
 }
 
 
@@ -199,6 +178,9 @@ static void *run_controller(void *args)
  */
 static void *tx_chain(void *args) 
 {
+    printf("***\n");
+    printf("in tx_chain()\n");
+    printf("***\n");
     struct cb_tx_args *tx_args = NULL;
     struct encaps_packet packet;
     struct link *tx_link = NULL;
@@ -210,7 +192,7 @@ static void *tx_chain(void *args)
     tx_args = (struct cb_tx_args*)
         malloc(sizeof(struct cb_tx_args*));
 
-    buff = (proxy_buff*) malloc(sizeof(proxy_buff*));
+    buff = (proxy_buff*) malloc(sizeof(proxy_buff));
     tx_link = (struct link*)
         malloc(sizeof(struct link*));
 
@@ -219,33 +201,58 @@ static void *tx_chain(void *args)
     tx_link = tx_args->tx_link;
     fd = tx_link->fd;
 
+    printf("before loop in tx_chain() \n");
+    printf("buff->get_ind: %d\n", buff->get_ind);
+    printf("buff->set_ind: %d\n", buff->set_ind);
+    printf("BLOCKSIZE: %d\n", (int) BLOCKSIZE);
     while (1) {
+        printf("trying to lock ...\n");
         pthread_mutex_lock(&buff->lock);
-        if (buff->set_ind > buff->get_ind) {
+        printf("*********************\n");
+        printf("locked \n");
+        printf("*********************\n");
+        printf("buff->set_ind: %d\n", buff->set_ind);
+        printf("buff->get_ind: %d\n", buff->get_ind);
+        if (buff->set_ind >= buff->get_ind) {
             ind = buff->get_ind;
+            printf("ind: %d\n", ind);
             packet.seq = ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
+            printf("packet.raw_packet: %s\n", packet.raw_packet);
             buff->get_ind++;
+            printf("unlock\n");
             pthread_mutex_unlock(&buff->lock);
             count = 0;
-            while (count < BUFF_SIZE) {
+            printf("before loop\n");
+            printf("PACKET_SIZE: %d\n", (int) PACKET_SIZE);
+            while (count < (int) PACKET_SIZE) {
+                printf("*** *** ***\n");
+                printf("sending ...\n");
+                printf("%s\n", packet.raw_packet);
                 send_res = send(fd, 
                     &((unsigned char*) &packet)[count],
-                        BUFF_SIZE-count, 0);
+                        PACKET_SIZE-count, 0);
                 if (send_res > 0)
                     count += send_res;
             }
         } else {
+            printf("unlock ...\n");
             pthread_mutex_unlock(&buff->lock);
+            printf("unlocked ...\n");
             sleep(2);
         }  
-        pthread_mutex_lock(&tx_link->lock);
+        printf("locking tx_link mutex ...\n");
+        /*pthread_mutex_lock(&tx_link->lock);*/
+        printf("tx_link->state: %d\n", tx_link->state);
         if (tx_link->state == PASSIVE) {
+            printf("fuck fuck fuck \n");
             tx_link->state = CLOSED;
-            pthread_mutex_unlock(&tx_link->lock);
+            /*pthread_mutex_unlock(&tx_link->lock);*/
             pthread_exit(&id);
         }
-        pthread_mutex_unlock(&tx_link->lock);
+        printf("unlocking tx_link mutex ...\n");
+        /*pthread_mutex_unlock(&tx_link->lock);*/
+        printf("------------------------------\n");
     }
 }
 
@@ -258,7 +265,7 @@ static void *tx_chain(void *args)
  * @param[out] tcp_link
  */
 static void set_link(char *dest_ip, char *dest_port,
-        struct link *tcp_link)
+        struct link *tcp_link) 
 {
     struct sockaddr_in server;
     int sockfd;
@@ -271,8 +278,11 @@ static void set_link(char *dest_ip, char *dest_port,
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(dest_port));
 
+    printf("tcp link connecting ...\n");
     conn_res = connect(sockfd, (struct sockaddr*)&server,
             sizeof(server));
+    printf("***\n");
+    printf("conn_res: %d\n", conn_res);
     if (conn_res > 0) {
         perror("connection failed. Error");
         exit(0);
@@ -280,6 +290,7 @@ static void set_link(char *dest_ip, char *dest_port,
         tcp_link->fd = sockfd;
     }
 
+    printf("connected ... \n");
     get_res = 
         getsockname(sockfd, (struct sockaddr *)&server, &len);
     if (get_res == -1) {
@@ -288,6 +299,7 @@ static void set_link(char *dest_ip, char *dest_port,
     } else {
         tcp_link->src_port = ntohs(server.sin_port);
     }
+    tcp_link->state = ACTIVE;
     pthread_mutex_init(&tcp_link->lock, NULL);
     pthread_cond_init(&tcp_link->cond, NULL);
 }
@@ -302,18 +314,24 @@ static void set_link(char *dest_ip, char *dest_port,
  *
  * @return 
  */
-static struct controller_args* set_controller_args(char *dest_ip,
+static struct cb_cntrl_args* set_controller_args(char *dest_ip,
         char *dest_port, proxy_buff *buff) 
 {
-    struct controller_args *cntrl_args = NULL;
-    cntrl_args = (struct controller_args*)
-        malloc(sizeof(struct controller_args*));
+    struct cb_cntrl_args *cntrl_args = NULL;
+
+    cntrl_args = (struct cb_cntrl_args*)
+        malloc(sizeof(struct cb_cntrl_args));
 
     cntrl_args->dest_ip = dest_ip;
     cntrl_args->dest_port = dest_port;
     cntrl_args->buff = buff;
     cntrl_args->conn_number = CONN_NUMBER;
-        return cntrl_args;
+    printf("set cb_cntrl_args\n");
+    printf("cntrl_args->buff->set_ind: %d\n",
+            cntrl_args->buff->set_ind);
+    printf("cntrl_args->buff->get_ind: %d\n",
+            cntrl_args->buff->get_ind);
+    return cntrl_args;
 }
 
 /**
@@ -327,21 +345,26 @@ static struct controller_args* set_controller_args(char *dest_ip,
  */
 static struct split_args* set_split_args(char *local_port)
 {
-
+    int i = 0;
     struct split_args *split = 
-        (struct split_args*) malloc(sizeof(struct split_args*));
+        (struct split_args*) malloc(sizeof(struct split_args));
+
     split->local_port = local_port;
 
     proxy_buff *buff = 
-        (proxy_buff*) malloc(sizeof(proxy_buff*));
+        (proxy_buff*) malloc(sizeof(proxy_buff));
 
     buff->rx_byte = 0;
     buff->tx_byte = 0;
-    buff->set_ind = 0;
+    buff->set_ind = -1;
     buff->get_ind = 0;
     buff->capacity = INITIAL_CAPACITY;
     buff->buffer = (char **) 
         malloc(sizeof(char*) * buff->capacity);
+    pthread_mutex_init(&buff->lock, NULL);
+    for (i = 0; i < INITIAL_CAPACITY; i++) {
+        buff->buffer[i] = (char *) malloc(PACKET_SIZE * sizeof(char));
+    }
 
     split->buff = buff;
     return split;
@@ -408,6 +431,7 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
 
 static void *get_payload(void *args) 
 {
+    int i = 0;
     int rs_addr, numbytes = 0, recv_count = 0;
     int rv, yes = 1, set_val, bind_val, listen_val;
     struct addrinfo hints;
@@ -422,7 +446,7 @@ static void *get_payload(void *args)
     char *local_port = NULL;
     socklen_t sin_size;
     int split_sock;
-    char *raw_buf = (char*) malloc(BUFF_SIZE);
+    char *raw_buf = (char*) malloc(PACKET_SIZE);
     printf("in get_payload\n");
 
     // get call back arguments
@@ -492,21 +516,25 @@ static void *get_payload(void *args)
             // poll() waits for file descriptor state change 
             rv = poll(&pfd, 1, -1);
             recv_count = 0;
-            while ((recv_count < (int) BUFF_SIZE) 
+            while ((recv_count < (int) PACKET_SIZE) 
                     & (exit_flag == false)) {
                 numbytes = recv(split_sock, raw_buf+recv_count,
-                        BUFF_SIZE-recv_count, 0);
+                        PACKET_SIZE-recv_count, 0);
+                /*printf("numbytes: %d\n", numbytes);*/
                 if (numbytes > 0)
                     recv_count += numbytes;
                 else
                     exit_flag = true;
             }
+            /*printf("raw_buf: %s\n", raw_buf);*/
             if (exit_flag) {
                 close(split_sock);
                 exit(0);
             }
+            i++;
             add2buff(buff, raw_buf);
-            raw_buf = (char *) malloc(BUFF_SIZE);
+            sleep(2);
+            raw_buf = (char *) malloc(PACKET_SIZE);
         }
     }
 }
@@ -523,19 +551,29 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
 {
     bool extend = false;
     int remained = 0;
+    int i = 0;
+    int pre_count = 0;
 
     pthread_mutex_lock(&buff->lock);
 
     remained = buff->capacity - buff->set_ind;
     extend = (remained) < (2 * (int) sizeof(char*));
     if (extend) {
+        printf("in extend()\n");
+        pre_count = buff->capacity;
         buff->capacity = buff->capacity * 2;
         buff->buffer = (char **) realloc(buff->buffer,
                 sizeof(char*) * buff->capacity);
+        for (i = pre_count; i < buff->capacity; i++) {
+            buff->buffer[i] = (char *) 
+                malloc(sizeof(char) * PACKET_SIZE);
+        }
+
     }
     buff->buffer[buff->set_ind] = raw_buf;
     buff->set_ind++;
-    buff->rx_byte += BUFF_SIZE;
+    /*printf("buff->set_ind: %d\n", buff->set_ind);*/
+    buff->rx_byte += PACKET_SIZE;
 
     pthread_mutex_unlock(&buff->lock);
 }

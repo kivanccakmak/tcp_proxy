@@ -30,9 +30,8 @@
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
-#define BUFF_SIZE 10
 #define INITIAL_CAPACITY 1000
-#define CONN_NUMBER 5
+#define CONN_NUMBER 2
 
 #define CLOSED -1
 #define ACTIVE 1
@@ -113,7 +112,7 @@ struct split_args{
  * of tcp_controller thread, who
  * opens and closes TCP-connections
  */
-struct controller_args{
+struct cb_cntrl_args{
     int conn_number;
     char *dest_ip;
     char *dest_port;
