@@ -182,7 +182,7 @@ static void *tx_chain(void *args)
     printf("in tx_chain()\n");
     printf("***\n");
     struct cb_tx_args *tx_args = NULL;
-    struct encaps_packet packet;
+    encaps_packet_t packet;
     struct link *tx_link = NULL;
     proxy_buff *buff;
     int ind = 0, count = 0, send_res = 0;
@@ -200,35 +200,26 @@ static void *tx_chain(void *args)
     buff = tx_args->buff;
     tx_link = tx_args->tx_link;
     fd = tx_link->fd;
-
     printf("before loop in tx_chain() \n");
     printf("buff->get_ind: %d\n", buff->get_ind);
     printf("buff->set_ind: %d\n", buff->set_ind);
     printf("BLOCKSIZE: %d\n", (int) BLOCKSIZE);
     while (1) {
-        printf("trying to lock ...\n");
         pthread_mutex_lock(&buff->lock);
-        printf("*********************\n");
-        printf("locked \n");
-        printf("*********************\n");
-        printf("buff->set_ind: %d\n", buff->set_ind);
-        printf("buff->get_ind: %d\n", buff->get_ind);
         if (buff->set_ind >= buff->get_ind) {
             ind = buff->get_ind;
-            printf("ind: %d\n", ind);
-            packet.seq = ind;
+            printf("buff->buffer[%d]: %s\n", ind, buff->buffer[ind]);
+            printf("buff->rx_byte: %d\n", buff->rx_byte);
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
+            packet.seq = (unsigned short) buff->get_ind;
             printf("packet.raw_packet: %s\n", packet.raw_packet);
             buff->get_ind++;
             printf("unlock\n");
             pthread_mutex_unlock(&buff->lock);
             count = 0;
-            printf("before loop\n");
-            printf("PACKET_SIZE: %d\n", (int) PACKET_SIZE);
             while (count < (int) PACKET_SIZE) {
                 printf("*** *** ***\n");
                 printf("sending ...\n");
-                printf("%s\n", packet.raw_packet);
                 send_res = send(fd, 
                     &((unsigned char*) &packet)[count],
                         PACKET_SIZE-count, 0);
@@ -363,7 +354,7 @@ static struct split_args* set_split_args(char *local_port)
         malloc(sizeof(char*) * buff->capacity);
     pthread_mutex_init(&buff->lock, NULL);
     for (i = 0; i < INITIAL_CAPACITY; i++) {
-        buff->buffer[i] = (char *) malloc(PACKET_SIZE * sizeof(char));
+        buff->buffer[i] = (char *) malloc(BLOCKSIZE * sizeof(char));
     }
 
     split->buff = buff;
@@ -446,7 +437,7 @@ static void *get_payload(void *args)
     char *local_port = NULL;
     socklen_t sin_size;
     int split_sock;
-    char *raw_buf = (char*) malloc(PACKET_SIZE);
+    char *raw_buf = (char*) malloc(BLOCKSIZE);
     printf("in get_payload\n");
 
     // get call back arguments
@@ -516,10 +507,10 @@ static void *get_payload(void *args)
             // poll() waits for file descriptor state change 
             rv = poll(&pfd, 1, -1);
             recv_count = 0;
-            while ((recv_count < (int) PACKET_SIZE) 
+            while ((recv_count < (int) BLOCKSIZE) 
                     & (exit_flag == false)) {
                 numbytes = recv(split_sock, raw_buf+recv_count,
-                        PACKET_SIZE-recv_count, 0);
+                        BLOCKSIZE-recv_count, 0);
                 /*printf("numbytes: %d\n", numbytes);*/
                 if (numbytes > 0)
                     recv_count += numbytes;
@@ -534,7 +525,7 @@ static void *get_payload(void *args)
             i++;
             add2buff(buff, raw_buf);
             sleep(2);
-            raw_buf = (char *) malloc(PACKET_SIZE);
+            raw_buf = (char *) malloc(BLOCKSIZE);
         }
     }
 }
@@ -566,15 +557,17 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
                 sizeof(char*) * buff->capacity);
         for (i = pre_count; i < buff->capacity; i++) {
             buff->buffer[i] = (char *) 
-                malloc(sizeof(char) * PACKET_SIZE);
+                malloc(sizeof(char) * BLOCKSIZE);
         }
 
     }
-    buff->buffer[buff->set_ind] = raw_buf;
     buff->set_ind++;
-    /*printf("buff->set_ind: %d\n", buff->set_ind);*/
-    buff->rx_byte += PACKET_SIZE;
-
+    printf("===            === \n");
+    buff->buffer[buff->set_ind] = raw_buf;
+    printf("buff->buffer[%d]: %s\n", buff->set_ind,
+            (char *) buff->buffer[buff->set_ind]);
+    printf("===            === \n");
+    buff->rx_byte += BLOCKSIZE;
     pthread_mutex_unlock(&buff->lock);
 }
 
