@@ -41,7 +41,7 @@ static void get_packets(char *port, FILE *fp)
     int recv_count = 0;
     int set_val, bind_val, listen_val;
     struct sockaddr_storage their_addr;
-    struct addrinfo hints, *addr, *servinfo;
+    struct addrinfo hints, *addr;
     socklen_t sin_size;
     char buffer[BLOCKSIZE];
 

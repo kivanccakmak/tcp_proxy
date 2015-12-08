@@ -1,10 +1,6 @@
 #include "boss_server.h"
 
-static void set_hints(struct addrinfo* hints);
-
 static void sigchld_handler(int s);
-
-static void initialize_addr(char* port, struct addrinfo *addr);
 
 static struct sigaction sig_init();
 
@@ -74,20 +70,37 @@ static void server_listen(char *server_port,
 {
     int sockfd, newfd;
     int yes = 1;
+    int rs_addr;
     int set_val, bind_val, listen_val, thr_val;
     char tx_ip[INET6_ADDRSTRLEN];
     uint32_t tx_port;
-    struct addrinfo *addr = NULL;
+    struct addrinfo hints, *addr;
     struct sigaction sig_sa;
     struct sockaddr_storage their_addr;
     cb_rx_args_t *cb_args_ptr;
 
-    addr = (struct addrinfo*) malloc(sizeof(struct addrinfo*));
-    printf("-initialize_addr()\n");
-    initialize_addr(server_port, addr);
+    addr = (struct addrinfo*) 
+        malloc(sizeof(struct addrinfo*));
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    rs_addr = getaddrinfo(NULL, server_port,
+            &hints, &addr);
+    if (rs_addr != 0) {
+        perror("getaddrinfo:");
+        exit(0);
+    }
+
     printf("-socket()\n");
     sockfd = socket(addr->ai_family, 
             addr->ai_socktype, addr->ai_protocol);
+    if (sockfd == -1) {
+        perror("socket");
+        exit(0);
+    }
 
     printf("-setsockopt()\n");
     set_val =
@@ -97,15 +110,15 @@ static void server_listen(char *server_port,
     printf("-bind()\n");
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
     if(bind_val == -1){
-        close(sockfd);
         perror("server: bind");
+        exit(0);
     } else {
         printf("socket binded\n");
     }
 
     if (addr == NULL){
         fprintf(stderr, "server: failed to bind\n");
-        exit(1);
+        exit(0);
     } else {
         printf("addr set\n");
     }
@@ -202,33 +215,6 @@ static struct sigaction sig_init()
 /**
  * @brief 
  *
- * Fill addrinfo struct.
- *
- * @param[in] port
- * @param[out] addr
- */
-static void initialize_addr(char* port, struct addrinfo *addr)
-{
-    struct addrinfo hints, *servinfo;
-    int rs_addr;
-    
-    memset(&hints, 0, sizeof hints);
-    set_hints(&hints);
-
-    rs_addr = getaddrinfo(NULL, port, &hints, &servinfo);
-    // this fills addr_info in linked list struct way 
-    
-    if (rs_addr != 0){
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rs_addr));
-    }
-
-    addr = servinfo;
-}
-
-
-/**
- * @brief 
- *
  * wait for a process to change
  * state
  *
@@ -237,18 +223,5 @@ static void initialize_addr(char* port, struct addrinfo *addr)
 static void sigchld_handler(int s)
 {
     while(waitpid(-1, NULL, WNOHANG) > 0);
-}
-
-/**
- * @brief 
- *
- * @param[out] hints
- */
-static void set_hints(struct addrinfo* hints)
-{
-    hints->ai_family = AF_INET; //IPv4
-    hints->ai_socktype = SOCK_STREAM;
-    hints->ai_flags = AI_PASSIVE;
-    hints->ai_protocol = 0;
 }
 
