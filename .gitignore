@@ -5,6 +5,7 @@ sniffs/*
 **/atom
 ppep/stream/stream
 ppep/receive/receive
+ppep/rx_proxy/proxy_rx
 netfilter/src/split
 netfilter/split
 receive/receive
