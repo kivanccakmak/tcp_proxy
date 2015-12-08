@@ -105,10 +105,7 @@ static void execute_boss(char *dest_ip,
                 ind_array[i], temp->raw_packet);
         packets[i] = temp;
     }
-
     // initiate threads
-
-
 }
 
 #endif

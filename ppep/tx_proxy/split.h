@@ -145,9 +145,14 @@ struct link_control{
     struct link *begin;
 };
 
-struct tx_args{
+struct cb_tx_args{
     proxy_buff *buff;
     struct link *tx_link;
+};
+
+struct cb_nfq_args{
+    char *dest_ip;
+    char *dest_port;
 };
 
 #define QUEUER_BUF_SIZE 10000

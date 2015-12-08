@@ -21,7 +21,7 @@ static struct split_args* set_split_args(char *local_port);
 
 static void* get_payload(void *args); 
 
-static controller_args* set_controller_args(char *dest_ip, 
+static struct controller_args* set_controller_args(char *dest_ip, 
     char *dest_port, proxy_buff *buff); 
 
 static void set_link(char *dest_ip, char *dest_port,
@@ -31,6 +31,7 @@ static void *run_controller(void *args);
 
 static void *tx_chain(void *args); 
 
+#ifdef TX_PROXY
 int main(int argc, char *argv[])
 {
 
@@ -54,25 +55,39 @@ int main(int argc, char *argv[])
     cntrl_args = set_controller_args(dest_ip,
             dest_port, split->buff);
 
-    ret = pthread_create(&queuer_id, NULL, queuer_loop, NULL);
+    ret = pthread_create(&queuer_id, NULL, &queuer_loop, NULL);
     if (ret) {
         printf("Failed to create queuer thread! [RET = %d]", ret);
+        exit(0);
+    } else{
+        printf("queuer thread initiated\n");
     }
 
     ret = pthread_create(&getter_id, NULL, &get_payload,
             (void *) split);
     if (ret) {
         printf("Failed to initiate payload getter. [RET = %d]", ret);
+        exit(0);
+    } else {
+        printf("payload thread initiated\n");
     }
 
     ret = pthread_create(&controller_id, NULL, &run_controller,
             (void *) cntrl_args);
+    if (ret) {
+        printf("Failed to initiate controller thread. [RET = %d]", ret);
+        exit(0);
+    } else {
+        printf("controller thread initiated\n");
+    }
 
     pthread_join(queuer_id, NULL);
+    sleep(3);
     pthread_join(getter_id, NULL);
     pthread_join(controller_id, NULL);
     return 0;
 }
+#endif
 
 
 /**
@@ -90,27 +105,42 @@ static void *run_controller(void *args)
     struct controller_args *cntrl_args = NULL;
     struct link *tcp_link = NULL;
     struct link *temp_link = NULL;
+    struct cb_tx_args *tx_args = NULL;
     struct link_control *controller = NULL;
-    char *dest_ip = NULL;
-    char *dest_port = NULL;
+    char *dest_ip = (char *) malloc(sizeof(char*));;
+    char *dest_port = (char *) malloc(sizeof(char*));
     bool lap = true;
 
+    controller = (struct link_control*)
+        malloc(sizeof(struct link_control*));
+    cntrl_args = (struct controller_args*)
+        malloc(sizeof(struct controller_args*));
     cntrl_args = (struct controller_args*) args;
     tcp_link = (struct link*) malloc(sizeof(struct link*));
     temp_link = (struct link*) malloc(sizeof(struct link*));
+    tx_args = (struct cb_tx_args*) 
+        malloc(sizeof(struct cb_tx_args*));
+
     dest_ip = cntrl_args->dest_ip;
     dest_port = cntrl_args->dest_port;
+    printf("%s:%s\n", dest_ip,dest_port);
 
+    printf("entering loop...\n");
     while (1) {
         for (i = 0; i < cntrl_args->conn_number; i++) {
+            printf("i: %d\n", i);
             set_link(dest_ip, dest_port, tcp_link);
+            tx_args->buff = cntrl_args->buff;
+            tx_args->tx_link = tcp_link;
             if (controller->begin == NULL) { 
                 controller->begin = tcp_link;
             }else if (controller->head == NULL) { 
+                printf("controller->head == NULL\n");
                 tcp_link->prev = controller->begin;
                 controller->begin->next = tcp_link;
                 controller->head = tcp_link;
             }else {
+                printf("else\n");
                 tcp_link->prev = temp_link;
                 temp_link->next = tcp_link;
                 controller->head = tcp_link;
@@ -119,9 +149,11 @@ static void *run_controller(void *args)
             pthread_t tx_id;
             sleep(1);
             thr_res = pthread_create(&tx_id, 
-                    NULL, &tx_chain, tcp_link);  
+                    NULL, &tx_chain, tx_args);  
             tcp_link = (struct link*) 
                 malloc(sizeof(struct link*));
+            tx_args = (struct cb_tx_args*)
+                malloc(sizeof(struct cb_tx_args*));
         }
         lap = (controller->head != NULL);
         tcp_link = controller->head;
@@ -150,6 +182,8 @@ static void *run_controller(void *args)
         }
         tcp_link = (struct link*) malloc(sizeof(struct link*));
         temp_link = (struct link*) malloc(sizeof(struct link*));
+        tx_args = (struct cb_tx_args*) 
+            malloc(sizeof(struct cb_tx_args*));
     }
 }
 
@@ -167,7 +201,7 @@ static void *tx_chain(void *args)
 {
     struct cb_tx_args *tx_args = NULL;
     struct encaps_packet packet;
-    struct link *tx_link;
+    struct link *tx_link = NULL;
     proxy_buff *buff;
     int ind = 0, count = 0, send_res = 0;
     int fd;
@@ -175,6 +209,7 @@ static void *tx_chain(void *args)
 
     tx_args = (struct cb_tx_args*)
         malloc(sizeof(struct cb_tx_args*));
+
     buff = (proxy_buff*) malloc(sizeof(proxy_buff*));
     tx_link = (struct link*)
         malloc(sizeof(struct link*));
@@ -257,13 +292,6 @@ static void set_link(char *dest_ip, char *dest_port,
     pthread_cond_init(&tcp_link->cond, NULL);
 }
 
-static void *tx_chain(void *args)
-{
-    // state from link->state
-    // get fd  
-    // get proxy
-}
-
 /**
  * @brief set call-back arguments 
  * of controller thread.
@@ -274,7 +302,7 @@ static void *tx_chain(void *args)
  *
  * @return 
  */
-static controller_args* set_controller_args(char *dest_ip,
+static struct controller_args* set_controller_args(char *dest_ip,
         char *dest_port, proxy_buff *buff) 
 {
     struct controller_args *cntrl_args = NULL;
@@ -284,7 +312,7 @@ static controller_args* set_controller_args(char *dest_ip,
     cntrl_args->dest_ip = dest_ip;
     cntrl_args->dest_port = dest_port;
     cntrl_args->buff = buff;
-    cntrl_args->conn_number = CONN_NUMBER:
+    cntrl_args->conn_number = CONN_NUMBER;
         return cntrl_args;
 }
 
@@ -325,22 +353,14 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
     struct nfq_q_handle *qh;
     struct nfnl_handle *nh;
 
-    int *sockfd, fd, i, ret;
+    int fd, i, ret;
     char buf[QUEUER_BUF_SIZE];
     ssize_t rc;
-    char *dest_ip, *dest_port;
-
-    dest_ip = (char *) malloc(20);
-    dest_port = (char *) malloc(20);
-    sockfd = (int *) malloc(sizeof(int*));
-
-    strcpy(dest_ip, "192.168.2.202");
-    strcpy(dest_port, "5050");
-    /*set_conn(dest_ip, dest_port, sockfd);*/
 
     h = nfq_open();
     if (!h) {
         printf("Failed to open NFQ handler! \n");
+        exit(0);
     }
 
     printf("unbinding existing nf_queue handler "
@@ -355,14 +375,14 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
         exit(0);
     }
 
-    printf("binding this socket to queue '%d'", QUEUE_NUM);
+    printf("binding this socket to queue '%d'\n", QUEUE_NUM);
     qh = nfq_create_queue(h, QUEUE_NUM, &nfqueue_get_syn, NULL);
     if (!qh) {
         printf("Failed to create nfnetlink queue!\n");
         exit(0);
     }
 
-    printf("setting copy_packet mode");
+    printf("setting copy_packet mode\n");
     ret = nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xffff);
     if (ret < 0) {
         printf("Failed to setup NFQ packet_copy mode! [RET = %d]\n", ret);
@@ -372,6 +392,7 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
     nh = nfq_nfnlh(h);
     fd = nfnl_fd(nh);
 
+    printf("in loop...\n");
     while ((rc = recv(fd, buf, QUEUER_BUF_SIZE, 0)) >= 0) {
         printf("received packet [sz = %d]\n", (int) rc);
         nfq_handle_packet(h, buf, rc);
@@ -390,7 +411,7 @@ static void *get_payload(void *args)
     int rs_addr, numbytes = 0, recv_count = 0;
     int rv, yes = 1, set_val, bind_val, listen_val;
     struct addrinfo hints;
-    struct addrinfo *addr;
+    struct addrinfo *addr = NULL;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
     struct split_args *split = NULL;
@@ -402,33 +423,49 @@ static void *get_payload(void *args)
     socklen_t sin_size;
     int split_sock;
     char *raw_buf = (char*) malloc(BUFF_SIZE);
+    printf("in get_payload\n");
 
     // get call back arguments
     split = (struct split_args*) 
         malloc(sizeof(struct split_args*));
     buff = (proxy_buff *) malloc(sizeof(proxy_buff*));
-    local_port = split->local_port;
     split = (struct split_args*) args;
+    local_port = split->local_port;
     buff = split->buff;
 
     // set local socket file descriptor 
     // to get data from nfqueue
-    memset(&hints, 0, sizeof hints);
+    memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
+    printf("hints set\n");
 
+    addr = (struct addrinfo*) 
+        malloc(sizeof(struct addrinfo*));
+    printf("local_port: %s\n", local_port);
     rs_addr = getaddrinfo(NULL, local_port, &hints, &addr);
-    split_sock = socket(addr->ai_family, addr->ai_socktype,
-            addr->ai_protocol);
-    set_val = setsockopt(split_sock, SOL_SOCKET, 
-            SO_REUSEADDR, &yes, sizeof(int));
 
     if (addr == NULL) {
         fprintf(stderr, "server: failed to bind \n");
         exit(1);
-    }
+    } else 
+        printf("addr set\n");
 
+    printf("initiating socket ...\n");
+    split_sock = socket(addr->ai_family, addr->ai_socktype,
+            addr->ai_protocol);
+
+    printf("after socket() \n");
+    if (split_sock == -1) {
+        perror("socket:");
+        exit(0);
+    } else
+        printf("socket initiated\n");
+    set_val = setsockopt(split_sock, SOL_SOCKET, 
+            SO_REUSEADDR, &yes, sizeof(int));
+
+    printf("binding to server\n");
     bind_val = bind(split_sock, addr->ai_addr, addr->ai_addrlen);
     if (bind_val == -1) {
         close(split_sock);
@@ -537,6 +574,7 @@ static int set_tx_sock(char *dest_ip, char *dest_port)
 static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data) 
 {
+    printf("in get syn\n");
     unsigned char *buffer;
     struct ipv4_packet *ip4;
     int id = 0, ret;
