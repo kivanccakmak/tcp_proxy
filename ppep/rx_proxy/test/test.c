@@ -34,6 +34,13 @@ static void fill_packet(int seq_number,
 static void *test_queue(void *args);
 #endif
 
+#ifdef TEST_BOSS
+
+static void execute_boss(char *dest_ip,
+        char *dest_port, char *output);
+
+#endif
+
 /**
  * @brief 
  *
@@ -54,6 +61,8 @@ int main(int argc, char *argv[])
         execute_reorder(argv[1], argv[2], argv[3]);
 #elif TEST_RECV
         execute_receive(argv[1], argv[2], argv[3]);
+#elif TEST_BOSS
+        execute_boss(argv[1], argv[2], argv[3]);
 #else
         printf("[%s] - no test flag foud \n", argv[0]);
 #endif
@@ -64,6 +73,45 @@ int main(int argc, char *argv[])
     }
     return 0;
 }
+
+#ifdef TEST_BOSS
+/**
+ * @brief assumes that boss_server 
+ * and receive modules are running.
+ * Then, initiates randomized 
+ * tx_packets towards boss_server
+ * module
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ * @param output
+ */
+static void execute_boss(char *dest_ip,
+        char *dest_port, char *output)
+{
+    int *ind_array;
+    int i = 0;
+    encaps_packet_t **packets = NULL;
+    encaps_packet_t *temp = NULL;
+
+    packets = (encaps_packet_t **)
+        malloc(sizeof(encaps_packet_t*) * MAX_PACKET);
+    ind_array = generate_index(MAX_PACKET);
+
+    for (i = 0; i < MAX_PACKET; i++) {
+        temp = (encaps_packet_t *) malloc(sizeof(encaps_packet_t*));
+        fill_packet(ind_array[i], temp);
+        printf("seq: %d, raw: %s \n", 
+                ind_array[i], temp->raw_packet);
+        packets[i] = temp;
+    }
+
+    // initiate threads
+
+
+}
+
+#endif
 
 #ifdef TEST_RECV
 /**
