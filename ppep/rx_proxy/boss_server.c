@@ -47,6 +47,7 @@ int main(int argc, char * argv[])
     pool_thr = pthread_create(&pool_id, NULL, &nudge_queue,
             (void *) reord_args);
 
+    printf("to server listen\n");
     server_listen(server_port, pool, queue);
 
     pthread_join(queue_id, NULL);
@@ -68,7 +69,7 @@ int main(int argc, char * argv[])
   * @param pool
   * @param queue
   */
-static void server_listen(char* server_port, 
+static void server_listen(char *server_port, 
         struct packet_pool *pool, queue_t *queue)
 {
     int sockfd, newfd;
@@ -81,25 +82,35 @@ static void server_listen(char* server_port,
     struct sockaddr_storage their_addr;
     cb_rx_args_t *cb_args_ptr;
 
+    addr = (struct addrinfo*) malloc(sizeof(struct addrinfo*));
+    printf("-initialize_addr()\n");
     initialize_addr(server_port, addr);
+    printf("-socket()\n");
     sockfd = socket(addr->ai_family, 
             addr->ai_socktype, addr->ai_protocol);
 
-    set_val = 
+    printf("-setsockopt()\n");
+    set_val =
         setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
                 sizeof(int));
 
+    printf("-bind()\n");
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
     if(bind_val == -1){
         close(sockfd);
         perror("server: bind");
+    } else {
+        printf("socket binded\n");
     }
 
     if (addr == NULL){
         fprintf(stderr, "server: failed to bind\n");
         exit(1);
+    } else {
+        printf("addr set\n");
     }
 
+    printf("-listen()\n");
     listen_val = listen(sockfd, BACKLOG);
     if (listen_val == -1){
         perror("listen");
@@ -107,13 +118,14 @@ static void server_listen(char* server_port,
     }
 
     // initialize sigaction to wait connections
+    printf("-sig_init()\n");
     sig_sa = sig_init();
     printf("server: waiting for connections\n");
 
     socklen_t sin_size;
     sin_size = sizeof their_addr;
 
-    while(1){
+    while (1) {
         newfd = accept(sockfd, (struct sockaddr *)&their_addr, 
                 &sin_size);
 
@@ -211,7 +223,6 @@ static void initialize_addr(char* port, struct addrinfo *addr)
     }
 
     addr = servinfo;
-    freeaddrinfo(servinfo);
 }
 
 
@@ -235,8 +246,9 @@ static void sigchld_handler(int s)
  */
 static void set_hints(struct addrinfo* hints)
 {
-    hints->ai_family = AF_UNSPEC;
+    hints->ai_family = AF_INET; //IPv4
     hints->ai_socktype = SOCK_STREAM;
     hints->ai_flags = AI_PASSIVE;
+    hints->ai_protocol = 0;
 }
 
