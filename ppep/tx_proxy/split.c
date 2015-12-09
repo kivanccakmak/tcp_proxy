@@ -151,12 +151,13 @@ static void *run_controller(void *args)
             thr_res = pthread_create(tx_ids[i], 
                     NULL, &tx_chain, (void *) tx_args[i]);  
         }
-        sleep(500);
+        printf("== after loop ==\n");
+        sleep(5);
         for (i = 0; i < cntrl_args->conn_number; i++) {
             pthread_mutex_lock(&tcp_links[i]->lock);
             tcp_links[i]->state = PASSIVE;
             pthread_mutex_unlock(&tcp_links[i]->lock);
-            sleep(1);
+            sleep(3);
             pthread_mutex_lock(&tcp_links[i]->lock);
             if (tcp_links[i]->state == CLOSED) {
                 printf("link %d is closed \n", i);
@@ -233,16 +234,17 @@ static void *tx_chain(void *args)
             sleep(2);
         }  
         printf("locking tx_link mutex ...\n");
-        /*pthread_mutex_lock(&tx_link->lock);*/
+        pthread_mutex_lock(&tx_link->lock);
         printf("tx_link->state: %d\n", tx_link->state);
         if (tx_link->state == PASSIVE) {
-            printf("fuck fuck fuck \n");
+            printf("*** link closed *** \n");
+            close(fd);
             tx_link->state = CLOSED;
-            /*pthread_mutex_unlock(&tx_link->lock);*/
+            pthread_mutex_unlock(&tx_link->lock);
             pthread_exit(&id);
         }
         printf("unlocking tx_link mutex ...\n");
-        /*pthread_mutex_unlock(&tx_link->lock);*/
+        pthread_mutex_unlock(&tx_link->lock);
         printf("------------------------------\n");
     }
 }

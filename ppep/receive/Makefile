@@ -1,6 +1,6 @@
 GCC = gcc
 
-PORT = 5000
+PORT = 5050 
 
 RECV_TARGET = receive
 RECV_SRC = receive.c
