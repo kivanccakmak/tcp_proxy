@@ -23,6 +23,7 @@ void *rx_chain(void *args)
     unsigned char *raw_buf = 
         (unsigned char*) malloc(PACKET_SIZE);
     struct pollfd pfd;
+    pthread_t id = pthread_self();
 
     // get struct pointers at thread initialization 
     cb_rx_args_t *cb_args = (cb_rx_args_t *) args;
@@ -31,13 +32,17 @@ void *rx_chain(void *args)
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
+    printf("recv_count: %d\n", recv_count);
 
     while (1) {
         // wait socket file descriptor to get packet
+        printf("wait for poll\n");
         rv = poll(&pfd, 1, cb_args->poll_timeout); 
         printf("rv: %d\n", rv);
+        printf("recv_count: %d\n", recv_count);
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count, 1, 0);
+            printf("numbytes: %d\n", numbytes);
             if (numbytes > 0) {
                 recv_count += numbytes;
             }
@@ -45,15 +50,20 @@ void *rx_chain(void *args)
                 perror("bug\n");
                 break;
             } else if (numbytes == 0) {
+		printf("=== closing interface ===\n");
+                pthread_exit(&id);
                 return NULL;
             }
             printf("recv_count: %ld\n", recv_count);
         }
+        printf("PACKET_SIZE: %d\n", (int) PACKET_SIZE);
+        printf("recv_count: %d\n", recv_count);
         *(raw_buf + recv_count + 1) = '\0';
+	printf("raw_buf: %s\n", (char *) raw_buf);
         pthread_mutex_lock(&pool->lock);
         push2pool((char *) raw_buf, pool);
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
-        recv_count = 0;
+	recv_count = 0;
     }
     return NULL;
 }
@@ -104,6 +114,7 @@ void push2pool(char *raw_packet,
 
     printf("pool->sequential_nodes[packet->seq]: %s\n",
             pool->sequential_nodes[packet->seq]);
+    printf("packet->raw_packet: %s\n", packet->raw_packet);
 
     // if sequentially expected packet came, make pool thread 
     wake_pool = (packet->seq == (pool->queue_seq + 1));

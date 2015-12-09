@@ -6,9 +6,9 @@ LOG_FLAG = --log-file
 LIBS = -lpthread -lm 
 VALGRIND = valgrind
 
-SERV_PORT = 5050
-DEST_IP = 192.168.2.22 
-DEST_PORT = 5000
+SERV_PORT = 5000
+DEST_IP = 192.168.2.202 
+DEST_PORT = 5050
 
 TARGET = proxy_rx
 DBG_TARGET = debug_proxy_rx
