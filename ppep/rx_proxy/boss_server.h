@@ -19,7 +19,7 @@
 
 #include "queue.h"
 #include "reorder.h"
-#include "network.h"
+#include "../network/network.h"
 #include "link_receptor.h"
 
 /**

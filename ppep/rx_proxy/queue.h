@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#include "network.h"
+#include "../network/network.h"
 
 #define INIT_QUEUE_SIZE sizeof(char *) * 1000
 
@@ -66,6 +66,5 @@ void *queue_wait(void *args);
 queue_t* queue_init(char *dest_ip, char *dest_port);
 
 #include "boss_server.h"
-#include "network.h"
 
 #endif

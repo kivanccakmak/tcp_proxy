@@ -15,14 +15,15 @@
  *
  * @return 
  */
-void *rx_chain(void *args){
-
+void *rx_chain(void *args)
+{
     int rv, numbytes = 0;
     int sockfd;
     unsigned long recv_count = 0;
     unsigned char *raw_buf = 
         (unsigned char*) malloc(PACKET_SIZE);
     struct pollfd pfd;
+    pthread_t id = pthread_self();
 
     // get struct pointers at thread initialization 
     cb_rx_args_t *cb_args = (cb_rx_args_t *) args;
@@ -31,13 +32,17 @@ void *rx_chain(void *args){
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
+    printf("recv_count: %d\n", recv_count);
 
     while (1) {
         // wait socket file descriptor to get packet
+        printf("wait for poll\n");
         rv = poll(&pfd, 1, cb_args->poll_timeout); 
         printf("rv: %d\n", rv);
+        printf("recv_count: %d\n", recv_count);
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count, 1, 0);
+            printf("numbytes: %d\n", numbytes);
             if (numbytes > 0) {
                 recv_count += numbytes;
             }
@@ -45,14 +50,20 @@ void *rx_chain(void *args){
                 perror("bug\n");
                 break;
             } else if (numbytes == 0) {
+		printf("=== closing interface ===\n");
+                pthread_exit(&id);
                 return NULL;
             }
             printf("recv_count: %ld\n", recv_count);
         }
+        printf("PACKET_SIZE: %d\n", (int) PACKET_SIZE);
+        printf("recv_count: %d\n", recv_count);
         *(raw_buf + recv_count + 1) = '\0';
+	printf("raw_buf: %s\n", (char *) raw_buf);
         pthread_mutex_lock(&pool->lock);
         push2pool((char *) raw_buf, pool);
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
+	recv_count = 0;
     }
     return NULL;
 }
@@ -71,18 +82,13 @@ void *rx_chain(void *args){
  * @param pool
  */
 void push2pool(char *raw_packet, 
-        struct packet_pool* pool) {
-    
-    printf("in push2pool\n");
-    printf("pool: %p\n", pool);
+        struct packet_pool* pool) 
+{
     bool wake_pool;
     bool full_capacity;
     int boundary_diff;
     encaps_packet_t *packet;
     packet = (encaps_packet_t *) raw_packet;
-
-    printf("seq: %d\n", packet->seq);
-    printf("raw: %s\n", packet->raw_packet);
 
     // Increase capacity pool->sequential numbers is FULL 
     full_capacity = ((pool->capacity - pool->count) <  2);
@@ -108,6 +114,7 @@ void push2pool(char *raw_packet,
 
     printf("pool->sequential_nodes[packet->seq]: %s\n",
             pool->sequential_nodes[packet->seq]);
+    printf("packet->raw_packet: %s\n", packet->raw_packet);
 
     // if sequentially expected packet came, make pool thread 
     wake_pool = (packet->seq == (pool->queue_seq + 1));
@@ -117,7 +124,5 @@ void push2pool(char *raw_packet,
     if (wake_pool) {
         pthread_cond_signal(&pool->cond);
     } 
-
     pthread_mutex_unlock(&pool->lock);
-    
 }

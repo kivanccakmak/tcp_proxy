@@ -3,13 +3,13 @@
 
 #define MAX_PACKET 5 
 
+#define NAMESIZE 100
+
 /**
  * @brief msec, reorder test
  * runtime
  */
 #define RUNTIME 5000
-
-#define RECEIVER_OUT "output.txt"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,12 +18,11 @@
 #include <math.h>
 #include <time.h>
 
-#include "../network.h"
 #include "../queue.h"
 #include "../boss_server.h"
-#include "../reorder.h"
+#include "..//reorder.h"
 #include "../link_receptor.h"
-
+#include "../../network/network.h"
 
 /**
  * @brief call-back arguments

@@ -1,5 +1,16 @@
 **/*.o
+**/*.pcapng
+**/*.pcap
+sniffs/*
 **/atom
+ppep/stream/stream
+ppep/tx_proxy/proxy_tx
+ppep/receive/receive
+ppep/rx_proxy/proxy_rx
+netfilter/src/split
+netfilter/split
+receive/receive
+**/split.log
 netfilter_max/*
 **/*.log
 */.myscope/
