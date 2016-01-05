@@ -1,13 +1,15 @@
 #include "file_read.h"
 
 /**
- * @brief 
+ * @brief returns file size in 
+ * terms of Bytes
  *
  * @param fp
  *
  * @return 
  */
-int get_file_size(FILE *fp){
+int get_file_size(FILE *fp)
+{
     int file_size;
     fseek(fp, 0L, SEEK_END);
     file_size = ftell(fp);
@@ -25,7 +27,9 @@ int get_file_size(FILE *fp){
  * @param[in] end_byte
  * @param[out] buffer
  */
-void read_file(FILE *fp, int start_byte, int end_byte, char *buffer){
+void read_file(FILE *fp, int start_byte, 
+        int end_byte, char *buffer)
+{
     size_t flen;
     size_t r_size = 1;
     size_t nmemb = end_byte - start_byte;

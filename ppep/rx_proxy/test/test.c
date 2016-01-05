@@ -1,22 +1,45 @@
 #include "test.h"
 
-static void execute_queue(char *dest_ip, 
-        char *dest_port);
+#ifdef TEST_RECV
+static void execute_receive(char *dest_ip, 
+        char *dest_port, char *outfile); 
 
-static void execute_reorder(char *dest_ip,
-        char *dest_port);
+static void *init_receive(void *args);
+#endif
+
+#ifdef TEST_QUEUE
+static void execute_queue(char *dest_ip, 
+    char *dest_port, char *outfile);
 
 static void *test_queue(void *args);
 
 static void *init_receive(void *args);
+#endif
+
+#ifdef TEST_REORDER
+static void execute_reorder(char *dest_ip,
+        char *dest_port, char *outfile);
 
 static bool isvalue_inarray(int val, 
         int *arr, int size); 
 
-static int* generrate_index(int size); 
+static void *init_receive(void *args);
+
+
+static int* generate_index(int size); 
 
 static void fill_packet(int seq_number,
         encaps_packet_t *packet);
+
+static void *test_queue(void *args);
+#endif
+
+#ifdef TEST_BOSS
+
+static void execute_boss(char *dest_ip,
+        char *dest_port, char *output);
+
+#endif
 
 /**
  * @brief 
@@ -29,20 +52,95 @@ static void fill_packet(int seq_number,
  *
  * @return 
  */
-int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("usage: %s test_unit END_DEST_IP END_DEST_PORT \n", argv[0]);
-        printf("ex: %s test_queue 127.0.0.1 5050 \n", argv[0]);
-    } else{
-        if (strcmp("-que", argv[1]) == 0) {
-            execute_queue(argv[2], argv[3]);
-        } else if(strcmp("-reord", argv[1]) == 0) {
-            execute_reorder(argv[2], argv[3]);
-        }
+int main(int argc, char *argv[]) 
+{
+    if (argc == 4) {
+#ifdef TEST_QUEUE
+        execute_queue(argv[1], argv[2], argv[3]);
+#elif TEST_REORDER
+        execute_reorder(argv[1], argv[2], argv[3]);
+#elif TEST_RECV
+        execute_receive(argv[1], argv[2], argv[3]);
+#elif TEST_BOSS
+        execute_boss(argv[1], argv[2], argv[3]);
+#else
+        printf("[%s] - no test flag foud \n", argv[0]);
+#endif
+    } else {
+        printf("[%s] - no test pattern found! \n", argv[0]);
+        printf("Usage: %s dest_ip dest_port output_file\n",
+                argv[0]);
     }
     return 0;
 }
 
+#ifdef TEST_BOSS
+/**
+ * @brief assumes that boss_server 
+ * and receive modules are running.
+ * Then, initiates randomized 
+ * tx_packets towards boss_server
+ * module
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ * @param output
+ */
+static void execute_boss(char *dest_ip,
+        char *dest_port, char *output)
+{
+    int *ind_array;
+    int i = 0;
+    encaps_packet_t **packets = NULL;
+    encaps_packet_t *temp = NULL;
+
+    packets = (encaps_packet_t **)
+        malloc(sizeof(encaps_packet_t*) * MAX_PACKET);
+    ind_array = generate_index(MAX_PACKET);
+
+    for (i = 0; i < MAX_PACKET; i++) {
+        temp = (encaps_packet_t *) malloc(sizeof(encaps_packet_t*));
+        fill_packet(ind_array[i], temp);
+        printf("seq: %d, raw: %s \n", 
+                ind_array[i], temp->raw_packet);
+        packets[i] = temp;
+    }
+    // initiate threads
+}
+
+#endif
+
+#ifdef TEST_RECV
+/**
+ * @brief Initiates receiver thread 
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ * @param[in] outfile
+ */
+static void execute_receive(char *dest_ip, char *dest_port,
+        char *outfile) 
+{
+    int dest_thr;
+    pthread_t dest_id;
+    struct debug_receiver_args *rx_args = NULL;
+
+    rx_args = (struct debug_receiver_args*) 
+        malloc(sizeof(struct debug_receiver_args*));
+
+    rx_args->dest_port = dest_port;
+    rx_args->filename = outfile;
+    printf("initiating receiver thread on %s:%s \n", 
+            dest_ip, dest_port);
+
+    dest_thr = pthread_create(&dest_id, NULL, &init_receive,
+            rx_args);
+    printf("dest_thr: %d\n", dest_thr);
+    pthread_join(dest_id, NULL);
+}
+#endif
+
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -56,9 +154,13 @@ int main(int argc, char *argv[]) {
  *
  * @param[in] dest_ip
  * @param[in] dest_port
+ * @param[in] outfile
  */
 static void execute_reorder(char *dest_ip, 
-        char *dest_port) {
+        char *dest_port, char *outfile) 
+{
+    clock_t start = clock(), diff;
+    int msec;
     int i = 0;
     int dest_thr, queue_thr, pool_thr;
     int *ind_array;
@@ -66,13 +168,23 @@ static void execute_reorder(char *dest_ip,
     queue_t *que = NULL;
     struct packet_pool *pool = NULL;
     cb_reord_args_t *reord_args = NULL;
+    struct debug_receiver_args *rx_args = NULL;
+
+    rx_args = (struct debug_receiver_args *)
+        malloc(sizeof(struct debug_receiver_args*));
+
+    rx_args->filename = outfile;
+    rx_args->dest_port = dest_port;
 
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
-            dest_port);
+            (void *) rx_args);
+    printf("dest_thr: %d\n", dest_thr);
+
     sleep(5);
     que = queue_init(dest_ip, dest_port);
     queue_thr = pthread_create(&queue_id, NULL, 
             &queue_wait, (void *) que);
+    printf("queue_thr: %d\n", queue_thr);
 
     pool = packet_pool_init(); 
     reord_args = (cb_reord_args_t *) malloc(sizeof(cb_reord_args_t*));
@@ -80,8 +192,9 @@ static void execute_reorder(char *dest_ip,
     reord_args->queue = que;
     pool_thr = pthread_create(&pool_id, NULL,
             &nudge_queue, (void *) reord_args);
+    printf("pool_thr: %d\n", pool_thr);
 
-    ind_array = generrate_index(MAX_PACKET);
+    ind_array = generate_index(MAX_PACKET);
     encaps_packet_t **packets = NULL;
     packets = (encaps_packet_t **) 
         malloc(sizeof(encaps_packet_t*) * MAX_PACKET);
@@ -97,16 +210,17 @@ static void execute_reorder(char *dest_ip,
 
     for (i = 0; i < MAX_PACKET; i++) {
         pthread_mutex_lock(&pool->lock);
-        printf("i: %d, packets[%d]->raw_packet: %s\n", 
-                i, i, packets[i]->raw_packet);
         push2pool((char *) packets[i], pool);
         sleep(1);
     }
+
     pthread_join(dest_id, NULL);
     pthread_join(queue_id, NULL);
     pthread_join(pool_id, NULL);
 }
+#endif
 
+#ifdef TEST_REORDER
 
 /**
  * @brief 
@@ -121,7 +235,8 @@ static void execute_reorder(char *dest_ip,
  * @return 
  */
 static bool isvalue_inarray(int val, 
-        int *arr, int size) {
+        int *arr, int size) 
+{
     int i;
     for (i = 0; i < size; i++) {
         if (arr[i] == val) {
@@ -130,7 +245,9 @@ static bool isvalue_inarray(int val,
     }
     return false;
 }
+#endif
 
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -144,7 +261,8 @@ static bool isvalue_inarray(int val,
  *
  * @return 
  */
-static int* generrate_index(int size) {
+static int* generate_index(int size) 
+{
     int count = 0, val;
     int *index_vals = NULL;
     index_vals = (int *) 
@@ -167,7 +285,9 @@ static int* generrate_index(int size) {
     }
     return index_vals;
 }
+#endif
 
+#ifdef TEST_REORDER
 /**
  * @brief 
  *
@@ -177,7 +297,8 @@ static int* generrate_index(int size) {
  * @param[out] packet
  */
 static void fill_packet(int seq_number, 
-        encaps_packet_t *packet) {
+        encaps_packet_t *packet) 
+{
     int i = 0;
     char randomletter = 'A' + (rand() % 26);
     packet->seq = seq_number;
@@ -185,7 +306,9 @@ static void fill_packet(int seq_number,
         packet->raw_packet[i] = randomletter;
     }
 }
+#endif
 
+#if defined(TEST_REORDER) || defined(TEST_QUEUE)
 /**
  * @brief 
  *
@@ -201,14 +324,23 @@ static void fill_packet(int seq_number,
  *
  * @param[in] dest_ip
  * @param[in] dest_port
+ * @param[in] outfile
  */
-static void execute_queue(char *dest_ip, char *dest_port) {
+static void execute_queue(char *dest_ip, char *dest_port,
+        char *outfile) 
+{
     int dest_thr, queue_thr, test_thr;
     pthread_t dest_id, queue_id, test_id;
     queue_t* que = NULL;
 
+    struct debug_receiver_args *rx_args = NULL;
+    rx_args = (struct debug_receiver_args *)
+        malloc(sizeof(struct debug_receiver_args*));
+
+    rx_args->filename = outfile;
+    rx_args->dest_port = dest_port;
     dest_thr = pthread_create(&dest_id, NULL, &init_receive,
-            dest_port);
+            rx_args);
 
     sleep(5);
 
@@ -226,7 +358,7 @@ static void execute_queue(char *dest_ip, char *dest_port) {
     printf("queue_thr: %d\n", queue_thr);
 
     sleep(5); 
-    
+
     test_thr = pthread_create(&test_id, NULL, 
             &test_queue, (void *) que);
     printf("test_thr: %d\n", test_thr);
@@ -235,7 +367,9 @@ static void execute_queue(char *dest_ip, char *dest_port) {
     pthread_join(queue_id, NULL);
     pthread_join(test_id, NULL);
 }
+#endif
 
+#if defined(TEST_QUEUE) || defined(TEST_REORDER)
 /**
  * @brief 
  *
@@ -247,8 +381,8 @@ static void execute_queue(char *dest_ip, char *dest_port) {
  *
  * @return 
  */
-static void *test_queue(void *args) {
-
+static void *test_queue(void *args) 
+{
     int count, i = 0;
     int index = 0;
     char *msg;
@@ -271,8 +405,6 @@ static void *test_queue(void *args) {
         que->index = index;
 
         printf("==index: %d\n", index);
-
-
         printf("== sending signal \n");
         sleep(1);
         pthread_mutex_unlock(&que->lock);
@@ -283,34 +415,37 @@ static void *test_queue(void *args) {
     }
     return NULL;
 }
+#endif
 
+
+#if defined(TEST_RECV) || defined(TEST_QUEUE) || defined(TEST_REORDER)
 /**
  * @brief 
  *
  * end destination emulate thread, waits
  * packets from socket file descriptor
- * of queue. 
+ * of queue. Consequently, writes into file 
  *
  * @param args
  *
  * @return 
  */
-static void *init_receive(void *args) {
-
-    printf("in init_receive thread \n");
-
+static void *init_receive(void *args) 
+{
     char *dest_port = NULL;
+    FILE *fp = NULL;
 
     int rs_addr;
     int yes = 1;
     int sockfd;
     int set_val, bind_val, listen_val;
+    struct debug_receiver_args *rx_args = NULL;
 
-    // buffer to receive packet 
     unsigned char *raw_buf = 
         (unsigned char *) malloc(BLOCKSIZE);
     struct addrinfo hints, *addr, *servinfo;
     struct sockaddr_storage their_addr;
+    socklen_t sin_size;
 
     // set hints
     memset(&hints, 0, sizeof hints);
@@ -319,7 +454,9 @@ static void *init_receive(void *args) {
     hints.ai_flags = AI_PASSIVE;
 
     // get addrinfo of this machine
-    dest_port = (char *) args;
+    rx_args = (struct debug_receiver_args *) args;
+    dest_port = rx_args->dest_port;
+    fp = fopen(rx_args->filename, "w");
     rs_addr = getaddrinfo(NULL, dest_port, 
             &hints, &servinfo);
 
@@ -336,6 +473,7 @@ static void *init_receive(void *args) {
     set_val = 
         setsockopt(sockfd, SOL_SOCKET, 
                 SO_REUSEADDR, &yes, sizeof(int));
+    printf("set_val: %d\n", set_val);
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
     if (bind_val == -1) {
         close(sockfd);
@@ -346,12 +484,8 @@ static void *init_receive(void *args) {
         exit(1);
     }
 
-    socklen_t sin_size;
     sin_size = sizeof(their_addr);
-
-    printf("end destination listens \n");
     listen_val = listen(sockfd, 1);
-    printf("listen_val: %d\n", listen_val);
 
     printf("end destination waits connection \n");
     sockfd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
@@ -375,17 +509,14 @@ static void *init_receive(void *args) {
         }
         /*printf("END DESTINATION RECV_COUNT: %ld\n", recv_count);*/
         printf("END DESTINATION RECEIVED: %s\n", raw_buf);
+        fp = fopen(rx_args->filename, "a");
+        fprintf(fp, "%s", raw_buf);
+        fprintf(fp, "%s", "\0");
+        fclose(fp);
         recv_count = 0;
         numbytes = 0;
         free(raw_buf);
         raw_buf = (unsigned char *) malloc(BLOCKSIZE);
     }
 }
-
-
-
-
-
-
-
-
+#endif

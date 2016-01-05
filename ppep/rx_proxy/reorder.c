@@ -13,8 +13,8 @@ static void add2queue(queue_t *queue, char *raw_data);
 
   * @return 
   */
-void *nudge_queue(void *args) {
-
+void *nudge_queue(void *args) 
+{
     bool packet_exist = true;
     int index = 0;
     struct packet_pool *pool = NULL;
@@ -44,6 +44,7 @@ void *nudge_queue(void *args) {
         while (packet_exist) {
             printf("* towards add2queue() \n");
             add2queue(queue, pool->sequential_nodes[index]);
+            pool->queue_seq++;
             printf("* passed add2queue() \n");
             index++;
             packet_exist = (pool->sequential_nodes[index] != NULL);
@@ -68,8 +69,8 @@ void *nudge_queue(void *args) {
  * @param[in] raw_data
  *
  */
-void add2queue(queue_t *queue, char *raw_data) {
-
+void add2queue(queue_t *queue, char *raw_data) 
+{
     printf("in add2queue() \n");
     int capacity_diff = 0;
 
@@ -96,8 +97,8 @@ void add2queue(queue_t *queue, char *raw_data) {
  *
  * @return 
  */
-struct packet_pool* packet_pool_init() {
-
+struct packet_pool* packet_pool_init() 
+{
     struct packet_pool *pool = (struct packet_pool*) 
         malloc(sizeof(struct packet_pool));
     pool->queue_seq = NO_SEQUENCE;

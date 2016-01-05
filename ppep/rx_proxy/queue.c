@@ -12,8 +12,8 @@
  * @param args  
  *
  */
-void *queue_wait(void *args) {
-
+void *queue_wait(void *args) 
+{
     int nwrite = 0, byte = 0;
     int pack_cnt = 0;
 
@@ -37,6 +37,7 @@ void *queue_wait(void *args) {
         for (pack_cnt = 0; pack_cnt <= que->index; pack_cnt++) {
             printf("pack_cnt: %d\n", pack_cnt);
             printf("message: %s\n", que->buffer[pack_cnt]);
+            printf("queue->last_seq: %d\n", que->last_seq);
             while (byte < BLOCKSIZE) {
                 nwrite = write(que->sockfd, que->buffer[pack_cnt] + byte,
                         BLOCKSIZE - byte);
@@ -54,7 +55,6 @@ void *queue_wait(void *args) {
         }
         que->index = -1;
     }
-
     return NULL;
 }
 
@@ -72,14 +72,12 @@ void *queue_wait(void *args) {
  *
  * @return *queue_t 
  */
-queue_t* queue_init(char *dest_ip, char *dest_port) {
-
+queue_t* queue_init(char *dest_ip, char *dest_port) 
+{
     int conn_res, sockfd = 0;
-    queue_t *que = (queue_t *) malloc( sizeof(queue_t) );
-
-    // fill sockaddr_in to use in connect
     struct sockaddr_in server;
 
+    queue_t *que = (queue_t *) malloc( sizeof(queue_t) );
     que->byte_count = 0;
     que->byte_capacity = INIT_QUEUE_SIZE;
     que->buffer = (char **) malloc(que->byte_capacity);
