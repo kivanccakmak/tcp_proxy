@@ -1,4 +1,5 @@
 **/*.o
+**/ppep/stream/stream
 netfilter_max/*
 **/*.log
 */.myscope/
