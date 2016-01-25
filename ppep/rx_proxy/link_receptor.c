@@ -1,5 +1,7 @@
 #include "link_receptor.h"
 
+static void add2queue(pqueue_t *pq, unsigned char *raw_packet);
+
 /**
  * @brief 
  *
@@ -9,7 +11,7 @@
  * initiates this function and this function 
  * just continously receives encapsulated TCP packets.
  * Consequently, this function orders to fill 
- * packet_pool by using push2pool(). 
+ * queue by using add2queue(). 
  *
  * @param args
  *
@@ -27,22 +29,21 @@ void *rx_chain(void *args)
 
     // get struct pointers at thread initialization 
     cb_rx_args_t *cb_args = (cb_rx_args_t *) args;
-    struct packet_pool *pool = cb_args->pool;
+
+    /*struct packet_pool *pool = cb_args->pool;*/
+    pqueue_t *pq = (pqueue_t *) malloc(sizeof(pqueue_t)); 
+    pq = cb_args->pq;
     sockfd = cb_args->sockfd;
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
-    printf("recv_count: %d\n", recv_count);
 
     while (1) {
         // wait socket file descriptor to get packet
-        printf("wait for poll\n");
         rv = poll(&pfd, 1, cb_args->poll_timeout); 
-        printf("rv: %d\n", rv);
-        printf("recv_count: %d\n", recv_count);
+
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count, 1, 0);
-            printf("numbytes: %d\n", numbytes);
             if (numbytes > 0) {
                 recv_count += numbytes;
             }
@@ -50,18 +51,12 @@ void *rx_chain(void *args)
                 perror("bug\n");
                 break;
             } else if (numbytes == 0) {
-		printf("=== closing interface ===\n");
                 pthread_exit(&id);
                 return NULL;
             }
-            printf("recv_count: %ld\n", recv_count);
         }
-        printf("PACKET_SIZE: %d\n", (int) PACKET_SIZE);
-        printf("recv_count: %d\n", recv_count);
+        add2queue(pq, raw_buf);
         *(raw_buf + recv_count + 1) = '\0';
-	printf("raw_buf: %s\n", (char *) raw_buf);
-        pthread_mutex_lock(&pool->lock);
-        push2pool((char *) raw_buf, pool);
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
 	recv_count = 0;
     }
@@ -69,60 +64,41 @@ void *rx_chain(void *args)
 }
 
 /**
- * @brief 
+ * @brief adds packet into queue.
+ * sends signal via conditional
+ * variable, if next ordered packet
+ * just arrived
  *
- * Adds packet to packet_pool by considering
- * common sequence number of packet, which 
- * is defined in encaps_packet format.
- * If sequentially expected packet arrived
- * to pool, wake reorder thread up with 
- * using nudge_queue()
- *
- * @param raw_packet
- * @param pool
+ * @param[out] pq
+ * @param[in] raw_packet
  */
-void push2pool(char *raw_packet, 
-        struct packet_pool* pool) 
+static void add2queue(pqueue_t *pq, unsigned char *raw_packet)
 {
-    bool wake_pool;
-    bool full_capacity;
-    int boundary_diff;
     encaps_packet_t *packet;
+    bool nudge = false;
+    node_t *ns = (node_t *) malloc(sizeof(node_t));
     packet = (encaps_packet_t *) raw_packet;
+    ns->pri = packet->seq;
+    ns->raw_packet = packet->raw_packet;
+    
+    // now lock queue and insert data
+    pthread_mutex_lock(&pq->lock);
 
-    // Increase capacity pool->sequential numbers is FULL 
-    full_capacity = ((pool->capacity - pool->count) <  2);
-    if (full_capacity) {
-        pool->capacity = pool->capacity * 2 + 1;
-        pool->sequential_nodes = 
-            (char **) realloc(pool->sequential_nodes,
-                sizeof(char*) * pool->capacity);
-    }
-
-    // Increase capacity if out-boundary packet arrives 
-    boundary_diff = packet->seq - pool->capacity;
-    if (boundary_diff > 0) {
-        pool->capacity = 2 * pool->capacity + boundary_diff;
-        pool->sequential_nodes = 
-            (char **) realloc(pool->sequential_nodes,
-                sizeof(char*) * pool->capacity);
-    }
-
-    // put packet into pool
-    pool->sequential_nodes[packet->seq] = 
-        (char *) packet->raw_packet;
-
-    printf("pool->sequential_nodes[packet->seq]: %s\n",
-            pool->sequential_nodes[packet->seq]);
-    printf("packet->raw_packet: %s\n", packet->raw_packet);
-
-    // if sequentially expected packet came, make pool thread 
-    wake_pool = (packet->seq == (pool->queue_seq + 1));
-    printf("wake_pool: %d\n", wake_pool ? 1 : 0);
-    printf("packet->seq: %d\n", packet->seq);
-    printf("pool->queue_seq: %d\n", pool->queue_seq);
-    if (wake_pool) {
-        pthread_cond_signal(&pool->cond);
+    // TODO: extend queue size if full 
+    
+    pqueue_insert(pq, ns);
+    if (pq->min_seq + 1 == (int) ns->pri) {
+        pq->min_seq = (int) ns->pri;
+        nudge = true;
+    } else if ((int) ns->pri < pq->min_seq) {
+        pq->min_seq = (int) ns->pri;
     } 
-    pthread_mutex_unlock(&pool->lock);
+
+    // if expected seq_number arrived, nudge
+    // forward module
+    if (nudge == true) {
+        pthread_cond_signal(&pq->cond);
+    }
+    pthread_mutex_unlock(&pq->lock);
 }
+

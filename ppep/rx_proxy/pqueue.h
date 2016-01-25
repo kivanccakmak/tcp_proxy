@@ -35,6 +35,8 @@
 #ifndef PQUEUE_H
 #define PQUEUE_H
 
+#include <pthread.h>
+
 /** priority data type */
 typedef unsigned long long pqueue_pri_t;
 
@@ -59,6 +61,9 @@ typedef struct pqueue_t
     size_t size;                /**< number of elements in this queue */
     size_t avail;               /**< slots available in this queue */
     size_t step;                /**< growth stepping setting */
+    int min_seq;                /**< minimum sequence number in queue*/
+    pthread_cond_t cond;        /**< link_receptors nudge to send data */
+    pthread_mutex_t lock;       /**< link_receptors lock quue to push data*/
     pqueue_cmp_pri_f cmppri;    /**< callback to compare nodes */
     pqueue_get_pri_f getpri;    /**< callback to get priority of a node */
     pqueue_set_pri_f setpri;    /**< callback to set priority of a node */
@@ -160,10 +165,8 @@ void *pqueue_peek(pqueue_t *q);
  * @param out the output handle
  * @param the callback function to print the entry
  */
-void
-pqueue_print(pqueue_t *q, 
-             FILE *out,
-             pqueue_print_entry_f print);
+void pqueue_print(pqueue_t *q, FILE *out,
+        pqueue_print_entry_f print);
 
 
 /**
@@ -174,10 +177,8 @@ pqueue_print(pqueue_t *q,
  * @param out the output handle
  * @param the callback function to print the entry
  */
-void
-pqueue_dump(pqueue_t *q, 
-             FILE *out,
-             pqueue_print_entry_f print);
+void pqueue_dump(pqueue_t *q, FILE *out, 
+        pqueue_print_entry_f print);
 
 
 /**
@@ -189,5 +190,6 @@ pqueue_dump(pqueue_t *q,
 int pqueue_is_valid(pqueue_t *q);
 
 
-#endif /* PQUEUE_H */
+#endif 
+/* PQUEUE_H */
 /** @} */

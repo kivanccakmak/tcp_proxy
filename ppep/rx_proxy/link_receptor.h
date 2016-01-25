@@ -18,6 +18,14 @@
 #include "../network/network.h"
 #include "reorder.h"
 
+
+/**
+ * @brief receiver chain thread
+ *
+ * @param args
+ *
+ * @return 
+ */
 void *rx_chain(void *args);
 
 void push2pool(char *raw_packet, 

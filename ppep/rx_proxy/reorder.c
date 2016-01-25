@@ -58,7 +58,6 @@ void *nudge_queue(void *args)
     return NULL;
 }
 
-
 /**
  * @brief 
  *

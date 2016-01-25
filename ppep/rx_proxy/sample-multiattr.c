@@ -67,7 +67,6 @@
 
 static int **pris;
 
-
 typedef struct node_t
 {
 	int    pri;
@@ -76,8 +75,7 @@ typedef struct node_t
 } node_t;
 
 
-static int
-cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
+static int cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
 {
 	int *_next = pris[(int) next];
 	int *_curr = pris[(int) curr];
@@ -88,36 +86,31 @@ cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
 }
 
 
-static pqueue_pri_t
-get_pri(void *a)
+static pqueue_pri_t get_pri(void *a)
 {
 	return ((node_t *) a)->pri;
 }
 
 
-static void
-set_pri(void *a, pqueue_pri_t pri)
+static void set_pri(void *a, pqueue_pri_t pri)
 {
 	((node_t *) a)->pri = (int) pri;
 }
 
 
-static size_t
-get_pos(void *a)
+static size_t get_pos(void *a)
 {
 	return ((node_t *) a)->pos;
 }
 
 
-static void
-set_pos(void *a, size_t pos)
+static void set_pos(void *a, size_t pos)
 {
 	((node_t *) a)->pos = pos;
 }
 
 
-static void
-pr_node(FILE *out, void *a)
+static void pr_node(FILE *out, void *a)
 {
 	node_t *n = a;
 
@@ -126,8 +119,7 @@ pr_node(FILE *out, void *a)
 }
 
 
-int
-main(void)
+int main(void)
 {
 	int i;
 	int p;

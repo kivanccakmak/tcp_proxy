@@ -1,17 +1,20 @@
 #include "boss_server.h"
 
+
+
 static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
-static void server_listen(char* server_port,  
-        struct packet_pool *pool, queue_t *queue);
+static void server_listen(char* server_port, 
+        pqueue_t* queue);
 
 static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, queue_t *queue, struct packet_pool *pool,
-        int poll_timeout); 
+        int sockfd, int poll_timeout, pqueue_t *pq); 
 
-#ifdef RX_PROXY
+static int sock_init(char *dest_ip, char *dest_port);
+
+/*#ifdef RX_PROXY*/
 int main(int argc, char * argv[])
 {
     if (argc != 4){
@@ -21,37 +24,27 @@ int main(int argc, char * argv[])
     }
 
     char *dest_ip, *dest_port, *server_port;
-    int queue_thr, pool_thr;
-    struct packet_pool *pool = NULL;
+    int sockfd;
 
-    pthread_t queue_id, pool_id;
-    cb_reord_args_t *reord_args = (cb_reord_args_t *)
-        malloc(sizeof(cb_reord_args_t*));
+    pqueue_t *pq;
 
     server_port = argv[1];
     dest_ip = argv[2];
     dest_port = argv[3];
 
     printf("initialize queue \n");
-    queue_t *queue = queue_init(dest_ip, dest_port);
-    queue_thr = pthread_create(&queue_id, NULL, &queue_wait,
-        (void *) queue);
+    pq = pqueue_init(10, cmp_pri, get_pri, set_pri,
+            get_pos, set_pos);
 
-    pool = packet_pool_init();
-    reord_args->queue = queue;
-    reord_args->pool = pool;
-    pool_thr = pthread_create(&pool_id, NULL, &nudge_queue,
-            (void *) reord_args);
-
+    //TODO: sock_init()
+    //TODO: start wait2fwd() thread
+    
     printf("to server listen\n");
-    server_listen(server_port, pool, queue);
-
-    pthread_join(queue_id, NULL);
-    pthread_join(pool_id, NULL);
+    server_listen(server_port, pq);
 
     return 0;
 }
-#endif
+/*#endif*/
 
  /**
   * @brief 
@@ -62,11 +55,9 @@ int main(int argc, char * argv[])
   * from transmitter side of proxy.
   *
   * @param[in] server_port
-  * @param pool
-  * @param queue
+  * @param[out] queue
   */
-static void server_listen(char *server_port, 
-        struct packet_pool *pool, queue_t *queue)
+static void server_listen(char *server_port, pqueue_t *pq)
 {
     int sockfd, newfd;
     int yes = 1;
@@ -131,7 +122,6 @@ static void server_listen(char *server_port,
     }
 
     // initialize sigaction to wait connections
-    printf("-sig_init()\n");
     sig_sa = sig_init();
     printf("server: waiting for connections\n");
 
@@ -156,8 +146,7 @@ static void server_listen(char *server_port,
         cb_args_ptr = (cb_rx_args_t *) 
             malloc(sizeof(cb_rx_args_t));
 
-        set_cb_rx_args(cb_args_ptr, newfd, queue,
-                pool, -1);
+        set_cb_rx_args(cb_args_ptr, newfd, -1, pq);
 
         thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
                 cb_args_ptr);
@@ -177,18 +166,46 @@ static void server_listen(char *server_port,
  *
  * @param[out] rx_args
  * @param[in] sockfd
- * @param[in] queue
- * @param[in] pool
  * @param[in] poll_timeout
+ * @param[in] pq
  */
 static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, queue_t *queue, struct packet_pool *pool,
+        int sockfd, pqueue_t *pq,
         int poll_timeout) 
 {
     rx_args->sockfd = sockfd;
     rx_args->poll_timeout = poll_timeout;
-    rx_args->pool = pool;
-    rx_args->queue = queue;
+    rx_args->pq = pq;
+}
+
+
+/**
+ * @brief 
+ *
+ * @param dest_ip
+ * @param dest_port
+ *
+ * @return 
+ */
+static int set_fwd_sock(char *dest_ip, char *dest_port, int *sockfd)
+{
+    int conn_res;
+    struct sockaddr_in server;
+    server.sin_addr.s_addr = inet_addr(dest_ip);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(dest_port));
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    conn_res = connect(sockfd, (struct sockaddr*) &server,
+            sizeof(server));
+
+    if (conn_res < 0) {
+        perror("connection failed. Error");
+        exit(0);
+    } else {
+        return sockfd;
+    }
+    
 }
 
 /**
@@ -223,5 +240,37 @@ static struct sigaction sig_init()
 static void sigchld_handler(int s)
 {
     while(waitpid(-1, NULL, WNOHANG) > 0);
+}
+
+
+/**
+ * @brief sets socket file descriptor 
+ * to forward data through end destination
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ *
+ * @return sockfd
+ */
+static int sock_init(char *dest_ip, char *dest_port)
+{
+    int conn_res, sockfd = 0;
+    struct sockaddr_in server;
+
+    server.sin_addr.s_addr = inet_addr(dest_ip);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(dest_port));
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    
+    conn_res = connect(sockfd, (struct sockaddr*) &server,
+            sizeof(server));
+
+    if (conn_res < 0) {
+        perror("connection failed.");
+        exit(0);
+    } else{
+        return sockfd;
+    }
 }
 

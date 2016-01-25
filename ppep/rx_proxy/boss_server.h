@@ -17,10 +17,11 @@
 #include <signal.h>
 #include <assert.h>
 
-#include "queue.h"
 #include "reorder.h"
 #include "../network/network.h"
 #include "link_receptor.h"
+#include "pqueue.h"
+#include "queue_funcs.h"
 
 /**
  * @brief call-back arguments
@@ -37,7 +38,7 @@ typedef struct cb_rx_args{
 
     int poll_timeout;
 
-    struct packet_pool *pool;
+    pqueue_t *pq;
 
     queue_t *queue;
 
