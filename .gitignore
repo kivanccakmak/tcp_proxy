@@ -1,5 +1,6 @@
 **/*.pcapng
 **/*.pcap
+ppep/rx_proxy/sample
 sniffs/*
 **/atom
 ppep/stream/stream
