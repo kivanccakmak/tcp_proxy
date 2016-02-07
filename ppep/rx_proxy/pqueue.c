@@ -23,7 +23,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,7 +32,6 @@
 #define left(i)   ((i) << 1)
 #define right(i)  (((i) << 1) + 1)
 #define parent(i) ((i) >> 1)
-
 
 pqueue_t * pqueue_init(size_t n,
             pqueue_cmp_pri_f cmppri,
@@ -62,12 +60,8 @@ pqueue_t * pqueue_init(size_t n,
     q->getpos = getpos;
     q->setpos = setpos;
 
-    pthread_mutex_init(&q->lock, NULL);
-    pthread_cond_init(&q->cond, NULL);
-
     return q;
 }
-
 
 void pqueue_free(pqueue_t *q)
 {
@@ -271,7 +265,6 @@ static void set_pri(void *d, pqueue_pri_t pri)
     /* do nothing */
 }
 
-
 void pqueue_print(pqueue_t *q,
              FILE *out,
              pqueue_print_entry_f print)
@@ -294,7 +287,6 @@ void pqueue_print(pqueue_t *q,
     pqueue_free(dup);
 }
 
-
 static int subtree_is_valid(pqueue_t *q, int pos)
 {
     if (left(pos) < q->size) {
@@ -313,7 +305,6 @@ static int subtree_is_valid(pqueue_t *q, int pos)
     }
     return 1;
 }
-
 
 int pqueue_is_valid(pqueue_t *q)
 {

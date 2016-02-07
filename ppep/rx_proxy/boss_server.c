@@ -1,13 +1,11 @@
 #include "boss_server.h"
 
-
-
 static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
 static void server_listen(char* server_port, 
-        pqueue_t* queue);
+        pool_t* pool);
 
 static void set_cb_rx_args(cb_rx_args_t *rx_args,
         int sockfd, int poll_timeout, pqueue_t *pq); 
@@ -27,20 +25,29 @@ int main(int argc, char * argv[])
     int sockfd;
 
     pqueue_t *pq;
+    pool *pl;
 
     server_port = argv[1];
     dest_ip = argv[2];
     dest_port = argv[3];
 
-    printf("initialize queue \n");
+    printf("initialize pool \n");
+
+    // initialize priority queue
     pq = pqueue_init(10, cmp_pri, get_pri, set_pri,
             get_pos, set_pos);
+    pl = (pool *) malloc(sizeof(pool_t));
+    pl->pq = (pqueue_t *) malloc(sizeof(pqueue_t));
+
+    pthread_mutex_init(&pl->lock, NULL);
+    pthread_cond_init(&pl->cond, NULL);
+    pl->pq = pq;
 
     //TODO: sock_init()
     //TODO: start wait2fwd() thread
     
     printf("to server listen\n");
-    server_listen(server_port, pq);
+    server_listen(server_port, pl);
 
     return 0;
 }
@@ -57,7 +64,7 @@ int main(int argc, char * argv[])
   * @param[in] server_port
   * @param[out] queue
   */
-static void server_listen(char *server_port, pqueue_t *pq)
+static void server_listen(char *server_port, pool_t *pl)
 {
     int sockfd, newfd;
     int yes = 1;
@@ -170,42 +177,12 @@ static void server_listen(char *server_port, pqueue_t *pq)
  * @param[in] pq
  */
 static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, pqueue_t *pq,
+        int sockfd, pool_t *pl,
         int poll_timeout) 
 {
     rx_args->sockfd = sockfd;
     rx_args->poll_timeout = poll_timeout;
-    rx_args->pq = pq;
-}
-
-
-/**
- * @brief 
- *
- * @param dest_ip
- * @param dest_port
- *
- * @return 
- */
-static int set_fwd_sock(char *dest_ip, char *dest_port, int *sockfd)
-{
-    int conn_res;
-    struct sockaddr_in server;
-    server.sin_addr.s_addr = inet_addr(dest_ip);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(dest_port));
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    conn_res = connect(sockfd, (struct sockaddr*) &server,
-            sizeof(server));
-
-    if (conn_res < 0) {
-        perror("connection failed. Error");
-        exit(0);
-    } else {
-        return sockfd;
-    }
-    
+    rx_args->pl = pl;
 }
 
 /**
@@ -273,4 +250,3 @@ static int sock_init(char *dest_ip, char *dest_port)
         return sockfd;
     }
 }
-
