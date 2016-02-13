@@ -16,7 +16,6 @@
 #include "queue.h"
 #include "boss_server.h"
 #include "../network/network.h"
-#include "reorder.h"
 
 
 /**
@@ -28,6 +27,4 @@
  */
 void *rx_chain(void *args);
 
-void push2pool(char *raw_packet, 
-        struct packet_pool* pool);
 #endif

@@ -1,6 +1,6 @@
 #include "link_receptor.h"
 
-static void add2queue(pqueue_t *pq, unsigned char *raw_packet);
+static void add2queue(pool_t *pl, unsigned char *raw_packet);
 
 /**
  * @brief 
@@ -25,22 +25,20 @@ void *rx_chain(void *args)
     unsigned char *raw_buf = 
         (unsigned char*) malloc(PACKET_SIZE);
     struct pollfd pfd;
+    pool_t *pl = (pool_t *) malloc(sizeof(pool_t));
     pthread_t id = pthread_self();
 
     // get struct pointers at thread initialization 
-    cb_rx_args_t *cb_args = (cb_rx_args_t *) args;
-
-    /*struct packet_pool *pool = cb_args->pool;*/
-    pqueue_t *pq = (pqueue_t *) malloc(sizeof(pqueue_t)); 
-    pq = cb_args->pq;
-    sockfd = cb_args->sockfd;
+    rx_args_t *rx_args = (rx_args_t *) args;
+    pl = rx_args->pl;
+    sockfd = rx_args->sockfd;
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
 
     while (1) {
         // wait socket file descriptor to get packet
-        rv = poll(&pfd, 1, cb_args->poll_timeout); 
+        rv = poll(&pfd, 1, rx_args->poll_timeout); 
 
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count, 1, 0);
@@ -55,7 +53,7 @@ void *rx_chain(void *args)
                 return NULL;
             }
         }
-        add2queue(pq, raw_buf);
+        add2queue(pl, raw_buf);
         *(raw_buf + recv_count + 1) = '\0';
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
 	recv_count = 0;
@@ -69,10 +67,10 @@ void *rx_chain(void *args)
  * variable, if next ordered packet
  * just arrived
  *
- * @param[out] pq
+ * @param[out] pl
  * @param[in] raw_packet
  */
-static void add2queue(pqueue_t *pq, unsigned char *raw_packet)
+static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
     encaps_packet_t *packet;
     bool nudge = false;
@@ -82,23 +80,20 @@ static void add2queue(pqueue_t *pq, unsigned char *raw_packet)
     ns->raw_packet = packet->raw_packet;
     
     // now lock queue and insert data
-    pthread_mutex_lock(&pq->lock);
+    pthread_mutex_lock(&pl->lock);
 
-    // TODO: extend queue size if full 
-    
-    pqueue_insert(pq, ns);
-    if (pq->min_seq + 1 == (int) ns->pri) {
-        pq->min_seq = (int) ns->pri;
+    pqueue_insert(pl->pq, ns);
+    if (pl->pq->min_seq + 1 == (int) ns->pri) {
+        pl->pq->min_seq = (int) ns->pri;
         nudge = true;
-    } else if ((int) ns->pri < pq->min_seq) {
-        pq->min_seq = (int) ns->pri;
+    } else if ((int) ns->pri < pl->pq->min_seq) {
+        pl->pq->min_seq = (int) ns->pri;
     } 
 
     // if expected seq_number arrived, nudge
     // forward module
     if (nudge == true) {
-        pthread_cond_signal(&pq->cond);
+        pthread_cond_signal(&pl->cond);
     }
-    pthread_mutex_unlock(&pq->lock);
+    pthread_mutex_unlock(&pl->lock);
 }
-

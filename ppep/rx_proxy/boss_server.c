@@ -2,6 +2,8 @@
 
 static pool_t* pool_init();
 
+static fqueue_t* fqueue_init(int sockfd);
+
 static int rcv_sock_init(char *server_port); 
 
 static int fwd_sock_init(char *dest_ip, char *dest_port);
@@ -52,22 +54,21 @@ int main(int argc, char * argv[])
 }
 /*#endif*/
 
-
 /**
- * @brief initialize pool struct to be used by
- * receiver threads.
+ * @brief initialize packet pool 
+ * struct to be used by receiver threads.
  *
  * @return 
  */
 static pool_t* pool_init() 
 {
     pqueue_t *pq;
-    pool *pl;
+    pool_t *pl;
 
     // initialize priority queue
     pq = pqueue_init(10, cmp_pri, get_pri, set_pri,
             get_pos, set_pos);
-    pl = (pool *) malloc(sizeof(pool_t));
+    pl = (pool_t *) malloc(sizeof(pool_t));
     pl->pq = (pqueue_t *) malloc(sizeof(pqueue_t));
 
     pthread_mutex_init(&pl->lock, NULL);
@@ -75,6 +76,31 @@ static pool_t* pool_init()
     pl->pq = pq;
 
     return pl;
+}
+
+/**
+ * @brief initializes forward queue 
+ * which passes data through end
+ * destination
+ *
+ * @param[in] sockfd
+ *
+ * @return
+ */
+static fqueue_t* fqueue_init(int sockfd)
+{
+    fqueue_t *fq = (fqueue_t *) malloc(sizeof(fqueue_t));
+    fq->byte_count = 0;
+    fq->byte_capacity = INIT_QUEUE_SIZE;
+
+    fq->sockfd = sockfd;
+
+    pthread_mutex_init(&fq->lock, NULL);
+    pthread_cond_init(&fq->cond, NULL);
+
+    fq->state = SLEEP;
+
+    return fq;
 }
 
 /**
@@ -225,26 +251,6 @@ static void server_listen(int rcv_sock, pool_t *pl)
             perror("could not create thread");
         }
     }
-}
-
-/**
- * @brief 
- *
- * Set call-back arguments of
- * rx_chain() thread.
- *
- * @param[out] rx_args
- * @param[in] sockfd
- * @param[in] poll_timeout
- * @param[in] pq
- */
-static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, pool_t *pl,
-        int poll_timeout) 
-{
-    rx_args->sockfd = sockfd;
-    rx_args->poll_timeout = poll_timeout;
-    rx_args->pl = pl;
 }
 
 /**

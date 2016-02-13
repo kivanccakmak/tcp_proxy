@@ -17,12 +17,11 @@
 #include <signal.h>
 #include <assert.h>
 
-#include "reorder.h"
+#include "forward.h"
 #include "../network/network.h"
 #include "link_receptor.h"
 #include "pqueue.h"
 #include "queue_funcs.h"
-#include "forward.h"
 
 #define CLOSE_CONN -1
 

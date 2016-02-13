@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdbool.h>
+
 #include "../network/network.h"
 #include "pqueue.h"
 #include "boss_server.h"
@@ -21,65 +23,10 @@
 #define SEND 1
 
 /**
- * @brief buffers sequentially ordered 
- * data from receptor thread, 
- * passes towards agnostic end destination
- */
-typedef struct fqueue{
-    /**
-     * @brief threads adds pointers 
-     * of sequentially ordered raw 
-     * data to this pointer array
-     */
-    char **buffer;
-
-    pthread_cond_t cond;
-    pthread_mutex_t lock;
-
-    /**
-     * @brief number of bytes in **buf
-     */
-    int byte_count;
-
-    /**
-     * @brief capacity of **buf
-     */
-    int byte_capacity;
-
-    /**
-     * @brief to send data to
-     * end-destination
-     */
-    int sockfd;
-    
-    /**
-     * @brief SLEEP or SEND
-     */
-    int state;
-    
-    /**
-     * @brief number of sent packets
-     */
-    int sent;
-
-} fqueue_t;
-
-/**
- * @brief forward queue initialization to
- * stream proxied data through agnostic and
- * destination. used by boss_server
- * module
- *
- * @param sockfd
- *
- * @return 
- */
-fqueue_t* fqueue_init(int sockfd);
-
-/**
  * @brief enabled by boss_server
- * module, queue module waits
- * nudgeing from receiver threads.
+ * module, queue module waits nudge from
+ * receiver threads by using
+ * conditional variables. 
  *
  * @param args
  *
