@@ -1,5 +1,16 @@
 #include "forward.h"
 
+static int fill_queue(pqueue_t *pq, fqueue_t *fq);
+
+/**
+ * @brief running queue thread, sleeps to get
+ * signal, then gets packets from priority queue
+ * and forwards through end-destination
+ *
+ * @param args
+ *
+ * @return 
+ */
 void *wait2forward(void *args) {
     int nwrite = 0, byte = 0;
     int pack_cnt = 0;
@@ -12,11 +23,51 @@ void *wait2forward(void *args) {
     while (1) {
         pthread_cond_wait(&fq->cond, &fq->lock);
         pthread_mutex_lock(&pl->lock);
-        fill_queue(pl->pq, fq);
-        fq->state = SEND;
-        forward_data(fq);
-
+        pack_cnt = fill_queue(pl->pq, fq);
+        if (pack_cnt > 0) {
+            fq->state = SEND;
+            forward_data(fq->buffer, pack_cnt);
+        } else {
+            fq->state = SLEEP;
+        }
     }
+}
+
+/**
+ * @brief 
+ *
+ * @param pq
+ * @param fq
+ *
+ * @return number of ready consecutive 
+ * packets to forward 
+ */
+static int fill_queue(pqueue_t *pq, fqueue_t *fq)
+{
+    bool flag = true;
+    int packets = 0;
+    node_t *ns;
+
+    ns = (node_t *) malloc(sizeof(node_t));
+    ns = (node_t *) pqueue_pop(pq);
+
+    if ( (int) ns->pri != fq->sent) {
+        pqueue_insert(pq, ns);
+        return packets;
+    }else {
+        packets += 1;
+        fq->buffer[packets] = (char*) ns->raw_packet;
+        while (flag == true) {
+            ns = (node_t *) malloc(sizeof(node_t));
+            ns = (node_t *) pqueue_pop(pq);
+            if ( (int) ns->pri == fq->sent + packets) {
+                fq->buffer[packets] = (char*) ns->raw_packet;
+                packets += 1;
+            } else {
+                return packets;
+            }
+        }
+    } 
 }
 
 /**
@@ -24,39 +75,18 @@ void *wait2forward(void *args) {
  * which passes data through end
  * destination
  *
- * @param[in] dest_ip
- * @param[in] dest_port
+ * @param[in] sockfd
  *
  * @return  
  */
-fqueue_t * fqueue_init(char *dest_ip, char *dest_port)
+fqueue_t* fqueue_init(int sockfd)
 {
-    int conn_res, sockfd = 0;
-    struct sockaddr_in server;
-
     fqueue_t *fq = (fqueue_t *) malloc(sizeof(fqueue_t));
     fq->byte_count = 0;
     fq->byte_capacity = INIT_QUEUE_SIZE;
     fq->buffer = (char **) malloc(fq->byte_capacity);
 
-    server.sin_addr.s_addr = inet_addr(dest_ip);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(dest_port));
-
-    printf("queue initializes sockfd\n");
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-
-    printf("connecting to end destination\n");
-    conn_res = connect(sockfd, (struct sockaddr*)&server,
-            sizeof(server));
-
-    if (conn_res < 0) {
-        perror("connection failed. Error");
-        exit(0);
-    } else {
-        printf("queue conencted to end destination\n");
-        fq->sockfd = sockfd;
-    }
+    fq->sockfd = sockfd;
 
     pthread_mutex_init(&fq->lock, NULL);
     pthread_cond_init(&fq->cond, NULL);

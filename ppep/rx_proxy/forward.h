@@ -56,8 +56,14 @@ typedef struct fqueue{
      * @brief SLEEP or SEND
      */
     int state;
+    
+    /**
+     * @brief number of sent packets
+     */
+    int sent;
 
 } fqueue_t;
 
+fqueue_t* fqueue_init(int sockfd);
 
 #endif

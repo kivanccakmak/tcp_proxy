@@ -1,16 +1,19 @@
 #include "boss_server.h"
 
+static pool_t* pool_init();
+
+static int rcv_sock_init(char *server_port); 
+
+static int fwd_sock_init(char *dest_ip, char *dest_port);
+
+static void server_listen(int sockfd, pool_t* pool);
+
 static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
-static void server_listen(char* server_port, 
-        pool_t* pool);
-
 static void set_cb_rx_args(cb_rx_args_t *rx_args,
         int sockfd, int poll_timeout, pqueue_t *pq); 
-
-static int sock_init(char *dest_ip, char *dest_port);
 
 /*#ifdef RX_PROXY*/
 int main(int argc, char * argv[])
@@ -22,16 +25,42 @@ int main(int argc, char * argv[])
     }
 
     char *dest_ip, *dest_port, *server_port;
-    int sockfd;
+    int rcv_sock, fwd_sock;
 
-    pqueue_t *pq;
-    pool *pl;
+    fqueue_t *fq;
+    pool_t *pl;
+    pl = pool_init();
 
     server_port = argv[1];
     dest_ip = argv[2];
     dest_port = argv[3];
 
-    printf("initialize pool \n");
+
+    rcv_sock = rcv_sock_init(server_port);
+    fwd_sock = fwd_sock_init(dest_ip, dest_port);
+
+    fq = fqueue_init(fwd_sock);
+
+    //TODO: start wait2fwd() thread
+    
+    printf("to server listen\n");
+    server_listen(rcv_sock, pl);
+
+    return 0;
+}
+/*#endif*/
+
+
+/**
+ * @brief initialize pool struct to be used by
+ * receiver threads.
+ *
+ * @return 
+ */
+static pool_t* pool_init() 
+{
+    pqueue_t *pq;
+    pool *pl;
 
     // initialize priority queue
     pq = pqueue_init(10, cmp_pri, get_pri, set_pri,
@@ -43,47 +72,31 @@ int main(int argc, char * argv[])
     pthread_cond_init(&pl->cond, NULL);
     pl->pq = pq;
 
-    //TODO: sock_init()
-    //TODO: start wait2fwd() thread
-    
-    printf("to server listen\n");
-    server_listen(server_port, pl);
-
-    return 0;
+    return pl;
 }
-/*#endif*/
 
- /**
-  * @brief 
-  *
-  * Listens from ip_addr:port and 
-  * initiates new thread whenever 
-  * new TCP connection established
-  * from transmitter side of proxy.
-  *
-  * @param[in] server_port
-  * @param[out] queue
-  */
-static void server_listen(char *server_port, pool_t *pl)
-{
-    int sockfd, newfd;
-    int yes = 1;
-    int rs_addr;
-    int set_val, bind_val, listen_val, thr_val;
-    char tx_ip[INET6_ADDRSTRLEN];
-    uint32_t tx_port;
+/**
+ * @brief initiates server socket
+ * file descriptor to accpet connections.
+ * new socket file descriptors would be
+ * created after accepting connections
+ * from this socket
+ *
+ * @param[in] server_port
+ *
+ * @return 
+ */
+static int rcv_sock_init(char *server_port) {
+    int sockfd, rs_addr;
+    int bind_val, set_val, yes = 1;
     struct addrinfo hints, *addr;
-    struct sigaction sig_sa;
-    struct sockaddr_storage their_addr;
-    cb_rx_args_t *cb_args_ptr;
 
     addr = (struct addrinfo*) 
-        malloc(sizeof(struct addrinfo*));
-
+        malloc(sizeof(struct addrinfo));
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
+    hints.ai_flags = AI_PASSIVE; 
 
     rs_addr = getaddrinfo(NULL, server_port,
             &hints, &addr);
@@ -92,7 +105,6 @@ static void server_listen(char *server_port, pool_t *pl)
         exit(0);
     }
 
-    printf("-socket()\n");
     sockfd = socket(addr->ai_family, 
             addr->ai_socktype, addr->ai_protocol);
     if (sockfd == -1) {
@@ -100,12 +112,9 @@ static void server_listen(char *server_port, pool_t *pl)
         exit(0);
     }
 
-    printf("-setsockopt()\n");
     set_val =
         setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
                 sizeof(int));
-
-    printf("-bind()\n");
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
     if(bind_val == -1){
         perror("server: bind");
@@ -120,9 +129,65 @@ static void server_listen(char *server_port, pool_t *pl)
     } else {
         printf("addr set\n");
     }
+    return sockfd;
+} 
+
+/**
+ * @brief sets socket file descriptor 
+ * to forward data through agnostic
+ * end destination with forward module.
+ *
+ * @param[in] dest_ip
+ * @param[in] dest_port
+ *
+ * @return sockfd
+ */
+static int fwd_sock_init(char *dest_ip, char *dest_port)
+{
+    int conn_res, sockfd = 0;
+    struct sockaddr_in server;
+
+    server.sin_addr.s_addr = inet_addr(dest_ip);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(dest_port));
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    
+    conn_res = connect(sockfd, (struct sockaddr*) &server,
+            sizeof(server));
+
+    if (conn_res < 0) {
+        perror("connection failed.");
+        exit(0);
+    } else{
+        return sockfd;
+    }
+}
+
+ /**
+  * @brief 
+  *
+  * Listens from ip_addr:port and 
+  * initiates new thread whenever 
+  * new TCP connection established
+  * from transmitter side of proxy.
+  *
+  * @param[in] sockfd
+  * @param[out] queue
+  */
+static void server_listen(int rcv_sock, pool_t *pl)
+{
+    int newfd;
+    int listen_val;
+    char tx_ip[INET6_ADDRSTRLEN];
+    uint32_t tx_port;
+    struct addrinfo hints, *addr;
+    struct sigaction sig_sa;
+    struct sockaddr_storage their_addr;
+    /*cb_rx_args_t *cb_args_ptr;*/
 
     printf("-listen()\n");
-    listen_val = listen(sockfd, BACKLOG);
+    listen_val = listen(rcv_sock, BACKLOG);
     if (listen_val == -1){
         perror("listen");
         exit(1);
@@ -136,7 +201,7 @@ static void server_listen(char *server_port, pool_t *pl)
     sin_size = sizeof their_addr;
 
     while (1) {
-        newfd = accept(sockfd, (struct sockaddr *)&their_addr, 
+        newfd = accept(rcv_sock, (struct sockaddr *)&their_addr, 
                 &sin_size);
 
         pthread_t thread_id;
@@ -150,18 +215,18 @@ static void server_listen(char *server_port, pool_t *pl)
         printf("server: got connection from %s : %d \n", 
                 tx_ip, tx_port);
 
-        cb_args_ptr = (cb_rx_args_t *) 
-            malloc(sizeof(cb_rx_args_t));
+        /*cb_args_ptr = (cb_rx_args_t *) */
+            /*malloc(sizeof(cb_rx_args_t));*/
 
-        set_cb_rx_args(cb_args_ptr, newfd, -1, pq);
+        /*set_cb_rx_args(cb_args_ptr, newfd, -1, pq);*/
 
-        thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
-                cb_args_ptr);
-        pthread_join(thread_id, NULL);
+        /*thr_val = pthread_create(&thread_id, NULL, &rx_chain, */
+                /*cb_args_ptr);*/
+        /*pthread_join(thread_id, NULL);*/
 
-        if (thr_val < 0){
-            perror("could not create thread");
-        }
+        /*if (thr_val < 0){*/
+            /*perror("could not create thread");*/
+        /*}*/
     }
 }
 
@@ -220,33 +285,3 @@ static void sigchld_handler(int s)
 }
 
 
-/**
- * @brief sets socket file descriptor 
- * to forward data through end destination
- *
- * @param[in] dest_ip
- * @param[in] dest_port
- *
- * @return sockfd
- */
-static int sock_init(char *dest_ip, char *dest_port)
-{
-    int conn_res, sockfd = 0;
-    struct sockaddr_in server;
-
-    server.sin_addr.s_addr = inet_addr(dest_ip);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(dest_port));
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    conn_res = connect(sockfd, (struct sockaddr*) &server,
-            sizeof(server));
-
-    if (conn_res < 0) {
-        perror("connection failed.");
-        exit(0);
-    } else{
-        return sockfd;
-    }
-}

@@ -22,13 +22,14 @@
 #include "link_receptor.h"
 #include "pqueue.h"
 #include "queue_funcs.h"
+#include "forward.h"
 
 /**
  * @brief receiver threads
  * would access pool to put
  * data inside priority queue.
  * Queue would access pool to
- * get forward data inside 
+ * get forward data from
  * priority queue
  */
 typedef struct pool{
