@@ -12,9 +12,6 @@ static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
-static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, int poll_timeout, pqueue_t *pq); 
-
 /*#ifdef RX_PROXY*/
 int main(int argc, char * argv[])
 {
@@ -26,22 +23,27 @@ int main(int argc, char * argv[])
 
     char *dest_ip, *dest_port, *server_port;
     int rcv_sock, fwd_sock;
-
     fqueue_t *fq;
     pool_t *pl;
-    pl = pool_init();
+    queue_args_t *que_args;
+
+    que_args = (queue_args_t *) 
+        malloc(sizeof(queue_args_t));
 
     server_port = argv[1];
     dest_ip = argv[2];
     dest_port = argv[3];
 
-
     rcv_sock = rcv_sock_init(server_port);
     fwd_sock = fwd_sock_init(dest_ip, dest_port);
 
+    pl = pool_init();
     fq = fqueue_init(fwd_sock);
 
-    //TODO: start wait2fwd() thread
+    que_args->pl = pl;
+    que_args->fq = fq;
+    
+    wait2forward(que_args);
     
     printf("to server listen\n");
     server_listen(rcv_sock, pl);
@@ -178,13 +180,13 @@ static int fwd_sock_init(char *dest_ip, char *dest_port)
 static void server_listen(int rcv_sock, pool_t *pl)
 {
     int newfd;
-    int listen_val;
+    int listen_val, thr_val;
     char tx_ip[INET6_ADDRSTRLEN];
     uint32_t tx_port;
-    struct addrinfo hints, *addr;
     struct sigaction sig_sa;
     struct sockaddr_storage their_addr;
-    /*cb_rx_args_t *cb_args_ptr;*/
+    socklen_t sin_size;
+    rx_args_t *rx_args;
 
     printf("-listen()\n");
     listen_val = listen(rcv_sock, BACKLOG);
@@ -196,8 +198,6 @@ static void server_listen(int rcv_sock, pool_t *pl)
     // initialize sigaction to wait connections
     sig_sa = sig_init();
     printf("server: waiting for connections\n");
-
-    socklen_t sin_size;
     sin_size = sizeof their_addr;
 
     while (1) {
@@ -205,28 +205,25 @@ static void server_listen(int rcv_sock, pool_t *pl)
                 &sin_size);
 
         pthread_t thread_id;
-
         inet_ntop(their_addr.ss_family,
             get_in_ipaddr((struct sockaddr *)&their_addr),
                 tx_ip, sizeof tx_ip);
-        
         tx_port = get_in_portnum((struct sockaddr *)&their_addr);
-
         printf("server: got connection from %s : %d \n", 
                 tx_ip, tx_port);
+        
+        rx_args = (rx_args_t *) malloc(sizeof(rx_args));
+        rx_args->sockfd = newfd;
+        rx_args->pl = pl;
+        rx_args->poll_timeout = -1;
 
-        /*cb_args_ptr = (cb_rx_args_t *) */
-            /*malloc(sizeof(cb_rx_args_t));*/
+        thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
+                rx_args);
+        pthread_join(thread_id, NULL);
 
-        /*set_cb_rx_args(cb_args_ptr, newfd, -1, pq);*/
-
-        /*thr_val = pthread_create(&thread_id, NULL, &rx_chain, */
-                /*cb_args_ptr);*/
-        /*pthread_join(thread_id, NULL);*/
-
-        /*if (thr_val < 0){*/
-            /*perror("could not create thread");*/
-        /*}*/
+        if (thr_val < 0){
+            perror("could not create thread");
+        }
     }
 }
 

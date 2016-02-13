@@ -24,13 +24,15 @@
 #include "queue_funcs.h"
 #include "forward.h"
 
+#define CLOSE_CONN -1
+
 /**
  * @brief receiver threads
  * would access pool to put
  * data inside priority queue.
  * Queue would access pool to
  * get forward data from
- * priority queue
+ * priority queue.
  */
 typedef struct pool{
     pthread_mutex_t lock;
@@ -43,29 +45,22 @@ typedef struct pool{
  * for link receptor thread.
  */
 typedef struct cb_rx_args{
-
     /**
-     * @brief socket descriptor of TCP connection
-     * in between link receptor and transmitter
-     * side of proxy
+     * @brief socket descriptor of new 
+     * TCP connection in between link receptor 
+     * and transmitter side of proxy
      */
     int sockfd;
     int poll_timeout;
     pool_t *pl;
-    queue_t *queue;
-
-} cb_rx_args_t;
-
+} rx_args_t;
 
 /**
- * @brief call-back arguments
- * for reorder thread.
+ * @brief queue call back arguments.
  */
-typedef struct cb_reord_args{
-    queue_t *queue;
-    struct packet_pool *pool;
-} cb_reord_args_t;
-
-#define CLOSE_CONN -1
+typedef struct queue_args{
+    pool_t *pl;
+    fqueue_t *fq;
+} queue_args_t;
 
 #endif

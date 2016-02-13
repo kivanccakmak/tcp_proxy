@@ -64,6 +64,27 @@ typedef struct fqueue{
 
 } fqueue_t;
 
+/**
+ * @brief forward queue initialization to
+ * stream proxied data through agnostic and
+ * destination. used by boss_server
+ * module
+ *
+ * @param sockfd
+ *
+ * @return 
+ */
 fqueue_t* fqueue_init(int sockfd);
+
+/**
+ * @brief enabled by boss_server
+ * module, queue module waits
+ * nudgeing from receiver threads.
+ *
+ * @param args
+ *
+ * @return 
+ */
+void *wait2forward(void *args);
 
 #endif
