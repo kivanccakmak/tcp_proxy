@@ -37,6 +37,10 @@
 
 #include <pthread.h>
 
+/**
+ * @brief node in queue
+ */
+
 /** priority data type */
 typedef unsigned long long pqueue_pri_t;
 
@@ -54,7 +58,6 @@ typedef void (*pqueue_set_pos_f)(void *a, size_t pos);
 /** debug callback function to print a entry */
 typedef void (*pqueue_print_entry_f)(FILE *out, void *a);
 
-
 /** the priority queue handle */
 typedef struct pqueue_t
 {
@@ -70,6 +73,61 @@ typedef struct pqueue_t
     void **d;                   /**< The actualy queue in binary heap form */
 } pqueue_t;
 
+typedef struct node_t
+{
+    pqueue_pri_t pri;
+    unsigned char* raw_packet;
+    size_t pos;
+} node_t;
+
+/**
+ * @brief compares priority  
+ * of queue elements
+ *
+ * @param[in] next
+ * @param[in] curr
+ *
+ * @return bool 
+ */
+int cmp_pri(pqueue_pri_t next, pqueue_pri_t curr);
+
+/**
+ * @brief set priority 
+ * of element in queue
+ *
+ * @param[out] a
+ * @param[in] pri
+ */
+void set_pri(void *a, pqueue_pri_t pri);
+
+/**
+ * @brief get priority of 
+ * element in queue
+ *
+ * @param[in] a
+ *
+ * @return int 
+ */
+pqueue_pri_t get_pri(void *a);
+
+/**
+ * @brief get position of
+ * element in queue
+ *
+ * @param[in] a
+ *
+ * @return int 
+ */
+size_t get_pos(void *a);
+
+/**
+ * @brief set position 
+ * of element in queue
+ *
+ * @param[out] a
+ * @param[in] pos
+ */
+void set_pos(void *a, size_t pos);
 
 /**
  * initialize the queue

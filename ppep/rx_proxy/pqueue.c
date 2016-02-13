@@ -33,6 +33,31 @@
 #define right(i)  (((i) << 1) + 1)
 #define parent(i) ((i) >> 1)
 
+int cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
+{
+    return (next < curr);
+}
+
+pqueue_pri_t get_pri(void *a)
+{
+    return ((node_t *) a)->pri;
+}
+
+size_t get_pos(void *a) 
+{
+    return ((node_t *) a)->pos;
+}
+
+void set_pos(void *a, size_t pos)
+{
+    ((node_t *) a)->pos = pos;
+}
+
+void set_pri(void *a, pqueue_pri_t pri)
+{
+    ((node_t *) a)->pri = pri;
+}
+
 pqueue_t * pqueue_init(size_t n,
             pqueue_cmp_pri_f cmppri,
             pqueue_get_pri_f getpri,
@@ -251,18 +276,6 @@ void pqueue_dump(pqueue_t *q,
                 (unsigned int)maxchild(q, i));
         print(out, q->d[i]);
     }
-}
-
-
-static void set_pos(void *d, size_t val)
-{
-    /* do nothing */
-}
-
-
-static void set_pri(void *d, pqueue_pri_t pri)
-{
-    /* do nothing */
 }
 
 void pqueue_print(pqueue_t *q,

@@ -13,8 +13,8 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "queue.h"
 #include "boss_server.h"
+#include "pqueue.h"
 #include "../network/network.h"
 
 

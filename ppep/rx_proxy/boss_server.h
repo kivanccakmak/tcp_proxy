@@ -21,9 +21,54 @@
 #include "../network/network.h"
 #include "link_receptor.h"
 #include "pqueue.h"
-#include "queue_funcs.h"
 
 #define CLOSE_CONN -1
+
+
+
+/**
+ * @brief buffers sequentially ordered 
+ * data from receptor thread, 
+ * passes towards agnostic end destination
+ */
+typedef struct fqueue{
+    /**
+     * @brief threads adds pointers 
+     * of sequentially ordered raw 
+     * data to this pointer array
+     */
+    char **buffer;
+
+    pthread_cond_t cond;
+    pthread_mutex_t lock;
+
+    /**
+     * @brief number of bytes in **buf
+     */
+    int byte_count;
+
+    /**
+     * @brief capacity of **buf
+     */
+    int byte_capacity;
+
+    /**
+     * @brief to send data to
+     * end-destination
+     */
+    int sockfd;
+    
+    /**
+     * @brief SLEEP or SEND
+     */
+    int state;
+    
+    /**
+     * @brief number of sent packets
+     */
+    int sent;
+
+} fqueue_t;
 
 /**
  * @brief receiver threads
