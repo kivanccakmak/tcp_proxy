@@ -107,4 +107,14 @@ typedef struct queue_args{
     fqueue_t *fq;
 } queue_args_t;
 
+void server_listen(int sockfd, pool_t* pool);
+
+pool_t* pool_init(); 
+
+int rcv_sock_init(char *server_port);
+
+int fwd_sock_init(char *dest_ip, char *dest_port);
+
+fqueue_t* fqueue_init(int sockfd);
+
 #endif

@@ -1,7 +1,5 @@
 #include "receive.h"
 
-static void get_packets(char *port, FILE *fp);
-
 #ifdef RECV
 int main(int argc, char *argv[]) 
 {
@@ -32,7 +30,7 @@ int main(int argc, char *argv[])
  * @param[in] port
  * @param[in] fp
  */
-static void get_packets(char *port, FILE *fp) 
+void get_packets(char *port, FILE *fp) 
 { 
     int rs_addr;
     int sockfd;

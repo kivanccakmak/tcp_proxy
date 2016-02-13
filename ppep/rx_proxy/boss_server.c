@@ -1,15 +1,5 @@
 #include "boss_server.h"
 
-static pool_t* pool_init();
-
-static fqueue_t* fqueue_init(int sockfd);
-
-static int rcv_sock_init(char *server_port); 
-
-static int fwd_sock_init(char *dest_ip, char *dest_port);
-
-static void server_listen(int sockfd, pool_t* pool);
-
 static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
@@ -60,7 +50,7 @@ int main(int argc, char * argv[])
  *
  * @return 
  */
-static pool_t* pool_init() 
+pool_t* pool_init() 
 {
     pqueue_t *pq;
     pool_t *pl;
@@ -87,7 +77,7 @@ static pool_t* pool_init()
  *
  * @return
  */
-static fqueue_t* fqueue_init(int sockfd)
+fqueue_t* fqueue_init(int sockfd)
 {
     fqueue_t *fq = (fqueue_t *) malloc(sizeof(fqueue_t));
     fq->byte_count = 0;
@@ -114,7 +104,7 @@ static fqueue_t* fqueue_init(int sockfd)
  *
  * @return 
  */
-static int rcv_sock_init(char *server_port) {
+int rcv_sock_init(char *server_port) {
     int sockfd, rs_addr;
     int bind_val, set_val, yes = 1;
     struct addrinfo hints, *addr;
@@ -170,7 +160,7 @@ static int rcv_sock_init(char *server_port) {
  *
  * @return sockfd
  */
-static int fwd_sock_init(char *dest_ip, char *dest_port)
+int fwd_sock_init(char *dest_ip, char *dest_port)
 {
     int conn_res, sockfd = 0;
     struct sockaddr_in server;
@@ -203,7 +193,7 @@ static int fwd_sock_init(char *dest_ip, char *dest_port)
   * @param[in] sockfd
   * @param[out] queue
   */
-static void server_listen(int rcv_sock, pool_t *pl)
+void server_listen(int rcv_sock, pool_t *pl)
 {
     int newfd;
     int listen_val, thr_val;

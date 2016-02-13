@@ -13,4 +13,6 @@
 #include <netdb.h>
 #include "../network/network.h"
 
+void get_packets(char *port, FILE *fp); 
+
 #endif
