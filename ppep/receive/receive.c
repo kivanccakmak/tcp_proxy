@@ -87,23 +87,16 @@ void get_packets(char *port, FILE *fp)
 
     while (n > 0) {
         memset(buffer, '\0', sizeof(buffer) - 1);
-        printf("recv_count: %d\n", recv_count);
-        printf("BLOCKSIZE: %d\n", (int) BLOCKSIZE);
         while (recv_count < BLOCKSIZE) {
             n = recv(sockfd, buffer+recv_count, 
                     BLOCKSIZE-recv_count, 0);
-            printf("received\n");
-            printf("n: %d\n", n);
-            printf("recv_count: %d\n", recv_count);
             if (n > 0) {
                 recv_count += n;
-                printf("recv_count: %d\n", recv_count);
-                printf("buffer: %s\n", buffer);
             } else {
                 break;
             }
         }
-        printf("buffer: %s\n", buffer);
+        printf("*MESSAGE*: %s\n", buffer);
         if (n < 1) {
             break;
         }

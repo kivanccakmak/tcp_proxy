@@ -24,18 +24,11 @@ void *wait2forward(void *args) {
     fq = queue_args->fq;
     pl = queue_args->pl;
 
-    printf("fq->byte: %d\n", fq->byte_capacity); 
-    printf("trying to lock!\n");
     pthread_mutex_lock(&pl->lock);
-    printf("======\n");
-    printf("locked!\n");
-    printf("======\n");
-    sleep(5);
 
     while (1) {
         printf("queue in cond_wait()\n");
         pthread_cond_wait(&pl->cond, &pl->lock);
-        sleep(1);
         printf("****\n");
         printf("queue get signal\n");
         printf("****\n");

@@ -39,6 +39,7 @@ void *rx_chain(void *args)
     printf("** in link_receptor() **\n");
     while (1) {
         // wait socket file descriptor to get packet
+        printf("receptor waits to be polled \n");
         rv = poll(&pfd, 1, rx_args->poll_timeout); 
 
         while (recv_count < PACKET_SIZE){
@@ -55,7 +56,6 @@ void *rx_chain(void *args)
             }
         }
         add2queue(pl, raw_buf);
-        printf("raw_buf: %s\n", raw_buf);
         *(raw_buf + recv_count + 1) = '\0';
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
 	recv_count = 0;
@@ -87,7 +87,9 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     ns->raw_packet = packet->raw_packet;
     
     // now lock queue and insert data
+    printf("receptor tries to lock\n");
     pthread_mutex_lock(&pl->lock);
+    printf("receptor locked\n");
 
     pqueue_insert(pl->pq, ns);
     if (pl->pq->min_seq + 1 == (int) ns->pri) {
@@ -99,11 +101,12 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 
     // if expected seq_number arrived, nudge
     // forward module
-    sleep(1);
     if (nudge == true) {
         printf("sending cond_signal \n");
+        pthread_mutex_unlock(&pl->lock);
         pthread_cond_signal(&pl->cond);
         printf("after sending cond_signal\n");
+    }else {
+        pthread_mutex_unlock(&pl->lock);
     }
-    pthread_mutex_unlock(&pl->lock);
 }

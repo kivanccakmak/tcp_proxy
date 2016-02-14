@@ -60,13 +60,22 @@ int main(int argc, char *argv[])
     rx_args->fp = fp;
     rx_args->port = dest_port;
     pthread_create(&rx_id, NULL, &run_receive, rx_args);
-    sleep(3);
+    sleep(5);
 
     pxy_fwd_sock = fwd_sock_init(dest_ip, dest_port);
     fq = fqueue_init(pxy_fwd_sock);
-    fq->byte_capacity = 41;
-    printf("fq->byte_capacity: %d\n", fq->byte_capacity);
     pl = pool_init();
+
+    // init fwd queue thread
+    printf("==========================\n");
+    printf("init fwd_queue thread \n");
+    printf("==========================\n");
+    queue_prm = (struct queue_params*) 
+        malloc(sizeof(struct queue_params));
+    queue_prm->pl = pl;
+    queue_prm->fq = fq;
+    pthread_create(&queue_id, NULL, &run_rx_queue, (void *) queue_prm);
+    sleep(5);
 
     // init boss server thread
     printf("==========================\n");
@@ -74,22 +83,10 @@ int main(int argc, char *argv[])
     printf("==========================\n");
     pxy_args = (struct pxy_params*)
         malloc(sizeof(struct pxy_params));
-    pxy_args->pl = pool_init();
+    pxy_args->pl = pl;
     pxy_args->recv_sock = pxy_rcv_sock;
     pthread_create(&boss_id, NULL, &run_rx_proxy, pxy_args);
 
-    // init fwd queue thread
-    printf("==========================\n");
-    printf("init fwd_queue thread \n");
-    printf("==========================\n");
-    printf("%d\n", pl->pq->size);
-    printf("%d\n", pl->pq->min_seq);
-    queue_prm = (struct queue_params*) 
-        malloc(sizeof(struct queue_params));
-    queue_prm->pl = pl;
-    queue_prm->fq = fq;
-    pthread_create(&queue_id, NULL, &run_rx_queue, (void *) queue_prm);
-    
     // init stream thread
     printf("==========================\n");
     printf("init stream thrad\n");

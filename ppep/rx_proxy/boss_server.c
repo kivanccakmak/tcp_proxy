@@ -203,6 +203,7 @@ void server_listen(int rcv_sock, pool_t *pl)
     socklen_t sin_size;
     rx_args_t *rx_args;
 
+    printf("pl->pq->min_seq: %d\n", pl->pq->min_seq);
     printf("-listen()\n");
     listen_val = listen(rcv_sock, BACKLOG);
     if (listen_val == -1){
