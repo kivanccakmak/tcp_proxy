@@ -83,29 +83,29 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 
     printf("packet->raw_packet: %s\n", packet->raw_packet);
     printf("packet->seq: %d\n", packet->seq);
-    ns->pri = packet->seq;
+    ns->pri = -1 * packet->seq;
     ns->raw_packet = packet->raw_packet;
     
     // now lock queue and insert data
-    printf("receptor tries to lock\n");
     pthread_mutex_lock(&pl->lock);
-    printf("receptor locked\n");
 
     pqueue_insert(pl->pq, ns);
-    if (pl->pq->min_seq + 1 == (int) ns->pri) {
-        pl->pq->min_seq = (int) ns->pri;
+    if (pl->sent_min_seq + 1 == packet->seq) {
+        printf("nudge  =  true\n");
         nudge = true;
-    } else if ((int) ns->pri < pl->pq->min_seq) {
-        pl->pq->min_seq = (int) ns->pri;
-    } 
+    } else
+        nudge = false;
+
+    if (pl->avail_min_seq + 1 == packet->seq)
+        pl->avail_min_seq += 1;
 
     // if expected seq_number arrived, nudge
     // forward module
     if (nudge == true) {
-        printf("sending cond_signal \n");
+        printf("*sending cond_signal* \n");
         pthread_mutex_unlock(&pl->lock);
         pthread_cond_signal(&pl->cond);
-        printf("after sending cond_signal\n");
+        printf("*after sending cond_signal*\n");
     }else {
         pthread_mutex_unlock(&pl->lock);
     }

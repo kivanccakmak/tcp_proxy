@@ -79,6 +79,8 @@ typedef struct pool{
     pthread_mutex_t lock;
     pthread_cond_t cond;
     pqueue_t* pq;
+    int avail_min_seq;
+    int sent_min_seq;
 }pool_t;
 
 /**

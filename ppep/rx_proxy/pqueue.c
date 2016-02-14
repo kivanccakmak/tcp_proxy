@@ -78,7 +78,6 @@ pqueue_t * pqueue_init(size_t n,
 
     q->size = 1;
     q->avail = q->step = (n+1);  /* see comment above about n+1 */
-    q->min_seq = -1; 
     q->cmppri = cmppri;
     q->setpri = setpri;
     q->getpri = getpri;

@@ -34,22 +34,23 @@ void *wait2forward(void *args) {
         printf("****\n");
         send_flag = true;
         while (send_flag == true) {
-            pthread_mutex_lock(&pl->lock);
             pack_cnt = fill_queue(pl->pq, fq);
+            printf("queue unlocks\n");
             pthread_mutex_unlock(&pl->lock);
+            printf("queue unlocked\n");
+            printf("pack_cnt: %d\n", pack_cnt);
             if (pack_cnt > 0) {
                 fq->state = SEND;
                 forward_data(fq, pack_cnt);
+                pl->sent_min_seq += pack_cnt;
             } else {
                 fq->state = SLEEP;
             }
-            free(fq->buffer);
-            pthread_mutex_lock(&pl->lock);
-            pack_cnt = fill_queue(pl->pq, fq);
-            if (pack_cnt == 0) {
+            if (pl->avail_min_seq == pl->sent_min_seq) 
                 send_flag = false;
-            }
-            pthread_mutex_unlock(&pl->lock);
+            else
+                send_flag = true;
+            free(fq->buffer);
         }
     }
 }
@@ -66,14 +67,15 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
     int byte = 0;
     int count = 0;
     int nwrite = 0;
+    printf("in forward_data()\n");
 
     for (count = 0; count < pack_cnt; count++) {
         while (byte < BLOCKSIZE) {
-            nwrite = write(fq->sockfd, fq->buffer[pack_cnt],
-                    BLOCKSIZE - byte);
+            nwrite = send(fq->sockfd, fq->buffer[pack_cnt],
+                    BLOCKSIZE - byte, 0);
             if (nwrite < 0) {
-                perror("Error");
-                exit(1);
+                perror("Error in forward_data");
+                exit(0);
             } else if (nwrite > 0) {
                 byte += nwrite;
             }
@@ -93,8 +95,10 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
  */
 static int fill_queue(pqueue_t *pq, fqueue_t *fq)
 {
+    printf("in fill_queue()\n");
     bool flag = true;
     int packets = 0;
+    int pack_num = 0;
     node_t *ns;
     
     // init buffer of queue
@@ -102,13 +106,18 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
 
     ns = (node_t *) malloc(sizeof(node_t));
     ns = (node_t *) pqueue_pop(pq);
+    pack_num = -1 * (int) ns->pri;
+    printf("pack_num: %d\n", pack_num);
+    printf("fq->sent: %d\n", fq->sent);
 
-    if ( (int) ns->pri != fq->sent) {
+    if (pack_num != fq->sent + 1) {
+        printf("won't send\n");
         pqueue_insert(pq, ns);
         return packets;
     }else {
-        packets += 1;
         fq->buffer[packets] = (char*) ns->raw_packet;
+        printf("-- adding --\n");
+        packets += 1;
         while (flag == true) {
             ns = (node_t *) malloc(sizeof(node_t));
             ns = (node_t *) pqueue_pop(pq);
@@ -117,12 +126,17 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
                 fq->buffer = (char **) realloc(fq->buffer,
                         fq->byte_capacity);
             }
-            if ( (int) ns->pri == fq->sent + packets) {
+            pack_num = -1 * ns->pri;
+            printf("*pack_num*: %d\n", pack_num);
+            if ( pack_num == fq->sent + packets + 1) {
+                printf("-- adding --\n");
                 fq->buffer[packets] = (char*) ns->raw_packet;
                 packets += 1;
                 fq->byte_count += (int) sizeof(ns->raw_packet);
             } else {
+                printf("-- no more add --\n");
                 pqueue_insert(pq, ns);
+                printf("-- blah --\n");
                 flag = false;
             }
         }

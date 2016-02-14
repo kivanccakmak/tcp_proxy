@@ -51,10 +51,7 @@ int main(int argc, char *argv[])
     fp = fopen(output, "a");
 
     // init receive thread
-    printf("==========================\n");
-    printf("init receive thread \n");
-    printf("==========================\n");
-    pxy_rcv_sock = rcv_sock_init(rx_proxy_port);
+    pxy_rcv_sock = rcv_sock_init(dest_port);
     rx_args = (struct rx_params*) 
         malloc(sizeof(struct rx_params));
     rx_args->fp = fp;
@@ -64,12 +61,12 @@ int main(int argc, char *argv[])
 
     pxy_fwd_sock = fwd_sock_init(dest_ip, dest_port);
     fq = fqueue_init(pxy_fwd_sock);
+
+    fq->byte_count = -1;
     pl = pool_init();
 
+    sleep(5);
     // init fwd queue thread
-    printf("==========================\n");
-    printf("init fwd_queue thread \n");
-    printf("==========================\n");
     queue_prm = (struct queue_params*) 
         malloc(sizeof(struct queue_params));
     queue_prm->pl = pl;
@@ -78,9 +75,6 @@ int main(int argc, char *argv[])
     sleep(5);
 
     // init boss server thread
-    printf("==========================\n");
-    printf("init run proxy thread \n");
-    printf("==========================\n");
     pxy_args = (struct pxy_params*)
         malloc(sizeof(struct pxy_params));
     pxy_args->pl = pl;
@@ -240,6 +234,8 @@ static int* generate_index(int size)
 
     while (count < size) {
         val = rand() % size;
+        if (val == 0)
+            val = size;
         if (count == 0) {
             index_vals[count] = val;
             count++;

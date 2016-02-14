@@ -64,7 +64,8 @@ typedef struct pqueue_t
     size_t size;                /**< number of elements in this queue */
     size_t avail;               /**< slots available in this queue */
     size_t step;                /**< growth stepping setting */
-    int min_seq;                /**< minimum sequence number in queue*/
+    int sent_min_seq;                /**< minimum sequence number in queue*/
+    int avail_min_seq;
     pqueue_cmp_pri_f cmppri;    /**< callback to compare nodes */
     pqueue_get_pri_f getpri;    /**< callback to get priority of a node */
     pqueue_set_pri_f setpri;    /**< callback to set priority of a node */

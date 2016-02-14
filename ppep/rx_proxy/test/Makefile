@@ -8,8 +8,8 @@ LIBS = -lpthread -lm
 REMOVE = clean
 
 DEST_IP = 127.0.0.1
-DEST_PORT = 7070
-PROXY_PORT = 8080
+DEST_PORT = 9070
+PROXY_PORT = 9080
 OUT_FILE = output.txt
 
 TEST_LOG = rx_proxy.log
@@ -19,12 +19,11 @@ DEP = ../boss_server.c ../forward.c ../../receive/receive.c \
 	  ../pqueue.c ../link_receptor.c ../../network/network.c
 
 TARGET = rx_proxy_test
-RUN = $(TARGET) $(DEST_PORT) $(DEST_IP) $(PROXY_PORT) $(OUT_FILE) 
 
+RUN = $(TARGET) $(DEST_PORT) $(DEST_IP) $(PROXY_PORT) $(OUT_FILE)
 
 $(TARGET): $(SRC) $(DEP)
 	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(DEBUG_FLAG) $(LIBS) $(WALL) -DTEST_RX_PROXY 
 	$(VALGRIND) $(LOG_FLAG)=$(TEST_LOG) $(LEAK_FLAG) ./$(RUN)
 $(REMOVE):
 	rm -rf rx_proxy_test rx_proxy.log 
-

@@ -62,11 +62,13 @@ pool_t* pool_init()
     pl = (pool_t *) malloc(sizeof(pool_t));
     pl->pq = (pqueue_t*) malloc(sizeof(pqueue_t));
     pl->pq = pq;
+    pl->avail_min_seq = 0;
+    pl->sent_min_seq = 0;
 
     pthread_mutex_init(&pl->lock, NULL);
     pthread_cond_init(&pl->cond, NULL);
     pl->pq = pq;
-
+    
     return pl;
 }
 
@@ -162,8 +164,8 @@ int rcv_sock_init(char *server_port) {
 int fwd_sock_init(char *dest_ip, char *dest_port)
 {
     int conn_res, sockfd = 0;
-    struct sockaddr_in server;
 
+    struct sockaddr_in server;
     server.sin_addr.s_addr = inet_addr(dest_ip);
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(dest_port));
@@ -203,7 +205,6 @@ void server_listen(int rcv_sock, pool_t *pl)
     socklen_t sin_size;
     rx_args_t *rx_args;
 
-    printf("pl->pq->min_seq: %d\n", pl->pq->min_seq);
     printf("-listen()\n");
     listen_val = listen(rcv_sock, BACKLOG);
     if (listen_val == -1){
