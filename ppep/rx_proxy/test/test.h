@@ -8,6 +8,7 @@
 
 #include "../../receive/receive.h"
 #include "../boss_server.h"
+#include "../../network/network.h"
 
 #define MAX_PACKET 50
 

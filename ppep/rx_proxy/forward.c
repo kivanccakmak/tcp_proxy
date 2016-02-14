@@ -19,8 +19,10 @@ void *wait2forward(void *args) {
 
     fqueue_t *fq = (fqueue_t *) args;
     pool_t *pl = (pool_t *) args;
+    printf("fq->byte: %d\n", fq->byte_capacity); 
 
     pthread_mutex_lock(&fq->lock);
+    sleep(10);
 
     while (1) {
         printf("queue in cond_wait()\n");

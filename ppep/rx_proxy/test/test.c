@@ -4,12 +4,12 @@ static void* run_stream(void *params);
 static void *run_receive(void *params);
 static void* run_rx_proxy(void *params); 
 static void* run_rx_queue(void *params);
-static void execute_boss(char *dest_ip, char *dest_port);
 static void test_boss(char *pxy_port, char *pxy_ip);
 static int* generate_index(int size);
 static bool isvalue_inarray(int val, int *arr, int size);
 static void fill_packet(int seq_number, encaps_packet_t *packet);
 
+#ifdef TEST_RX_PROXY
 /**
  * @brief main test function of receiver
  * side of pair performance enhancing
@@ -22,7 +22,6 @@ static void fill_packet(int seq_number, encaps_packet_t *packet);
  */
 int main(int argc, char *argv[])
 {
-
     if (argc != 5) {
         printf("usage: %s dest_port dest_ip proxy_port"
                 "out_file\n", argv[0]);
@@ -50,42 +49,63 @@ int main(int argc, char *argv[])
     rx_proxy_port = argv[3];
     output = argv[4];
     
-    // set parameters
     fp = fopen(output, "a");
+
+    // init receive thread
+    printf("==========================\n");
+    printf("init receive thread \n");
+    printf("==========================\n");
     pxy_rcv_sock = rcv_sock_init(rx_proxy_port);
-    pxy_fwd_sock = fwd_sock_init(dest_ip, dest_port);
-    fq = fqueue_init(pxy_fwd_sock);
-    pl = pool_init();
-    
-    // load parameters to thread args 
     rx_args = (struct rx_params*) 
         malloc(sizeof(struct rx_params));
     rx_args->fp = fp;
     rx_args->port = dest_port;
+    pthread_create(&rx_id, NULL, &run_receive, rx_args);
+    sleep(3);
 
+    pxy_fwd_sock = fwd_sock_init(dest_ip, dest_port);
+    fq = fqueue_init(pxy_fwd_sock);
+    pl = pool_init();
+
+    // init boss server thread
+    printf("==========================\n");
+    printf("init run proxy thread \n");
+    printf("==========================\n");
     pxy_args = (struct pxy_params*)
         malloc(sizeof(struct pxy_params));
     pxy_args->pl = pl;
     pxy_args->recv_sock = pxy_rcv_sock;
-    
+    pthread_create(&boss_id, NULL, &run_rx_proxy, pxy_args);
+
+    // init fwd queue thread
+    printf("==========================\n");
+    printf("init fwd_queue thread \n");
+    printf("==========================\n");
     queue_args = (queue_args_t *)
         malloc(sizeof(queue_args_t));
     queue_args->pl = pl;
     queue_args->fq = fq;
-
+    pthread_create(&queue_id, NULL, &run_rx_queue, queue_args);
+    sleep(3);
+    
+    // init stream thread
+    printf("==========================\n");
+    printf("init stream thrad\n");
+    printf("==========================\n");
     stream_args = (struct stream_params*)
         malloc(sizeof(struct stream_params));
     stream_args->rx_pxy_port = rx_proxy_port;
     stream_args->rx_pxy_ip = dest_ip;
-    
-    // start threads
-    pthread_create(&rx_id, NULL, &run_receive, rx_args);
-    pthread_create(&boss_id, NULL, &run_rx_proxy, pxy_args);
-    pthread_create(&queue_id, NULL, &run_rx_queue, queue_args);
     pthread_create(&stream_id, NULL, &run_stream, stream_args);
+    
+    pthread_join(rx_id, NULL);
+    pthread_join(queue_id, NULL);
+    pthread_join(boss_id, NULL);
+    pthread_join(stream_id, NULL);
 
     return 0;
 }
+#endif
 
 static void* run_stream(void *params)
 {
@@ -140,6 +160,8 @@ static void* run_rx_proxy(void *params)
  */
 static void* run_receive(void *params) {
     struct rx_params* rx_ptr = (struct rx_params*) params; 
+    printf("running get_packets()\n");
+    printf("port: %s", rx_ptr->port);
     get_packets(rx_ptr->port, rx_ptr->fp);
     return NULL;
 }
@@ -269,5 +291,3 @@ static void fill_packet(int seq_number,
     for (i = 0; i < BLOCKSIZE; i++)
         packet->raw_packet[i] = randomletter;
 }
-
-

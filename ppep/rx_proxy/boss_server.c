@@ -4,7 +4,7 @@ static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
-/*#ifdef RX_PROXY*/
+#ifdef RX_PROXY
 int main(int argc, char * argv[])
 {
     if (argc != 4){
@@ -42,7 +42,7 @@ int main(int argc, char * argv[])
 
     return 0;
 }
-/*#endif*/
+#endif
 
 /**
  * @brief initialize packet pool 
@@ -133,6 +133,7 @@ int rcv_sock_init(char *server_port) {
     set_val =
         setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
                 sizeof(int));
+    printf("set_val: %d\n", set_val);
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
     if(bind_val == -1){
         perror("server: bind");

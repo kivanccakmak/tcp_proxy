@@ -35,7 +35,8 @@ void *rx_chain(void *args)
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
-
+    
+    printf("** in link_receptor() **\n");
     while (1) {
         // wait socket file descriptor to get packet
         rv = poll(&pfd, 1, rx_args->poll_timeout); 
