@@ -39,9 +39,6 @@ typedef struct fqueue{
      */
     char **buffer;
 
-    pthread_cond_t cond;
-    pthread_mutex_t lock;
-
     /**
      * @brief number of bytes in **buf
      */

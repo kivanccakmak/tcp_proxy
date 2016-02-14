@@ -84,10 +84,6 @@ fqueue_t* fqueue_init(int sockfd)
     fq->byte_capacity = INIT_QUEUE_SIZE;
 
     fq->sockfd = sockfd;
-
-    pthread_mutex_init(&fq->lock, NULL);
-    pthread_cond_init(&fq->cond, NULL);
-
     fq->state = SLEEP;
 
     return fq;

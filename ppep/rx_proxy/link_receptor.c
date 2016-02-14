@@ -73,10 +73,13 @@ void *rx_chain(void *args)
  */
 static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
+    printf("in add2queue\n");
     encaps_packet_t *packet;
     bool nudge = false;
     node_t *ns = (node_t *) malloc(sizeof(node_t));
     packet = (encaps_packet_t *) raw_packet;
+    printf("packet->raw_packet: %s\n", packet->raw_packet);
+    printf("packet->seq: %d\n", packet->seq);
     ns->pri = packet->seq;
     ns->raw_packet = packet->raw_packet;
     
@@ -93,8 +96,11 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 
     // if expected seq_number arrived, nudge
     // forward module
+    sleep(1);
     if (nudge == true) {
+        printf("sending cond_signal \n");
         pthread_cond_signal(&pl->cond);
+        printf("after sending cond_signal\n");
     }
     pthread_mutex_unlock(&pl->lock);
 }

@@ -21,12 +21,13 @@ void *wait2forward(void *args) {
     pool_t *pl = (pool_t *) args;
     printf("fq->byte: %d\n", fq->byte_capacity); 
 
-    pthread_mutex_lock(&fq->lock);
-    sleep(10);
+    pthread_mutex_lock(&pl->lock);
+    sleep(5);
 
     while (1) {
         printf("queue in cond_wait()\n");
-        pthread_cond_wait(&fq->cond, &fq->lock);
+        pthread_cond_wait(&pl->cond, &pl->lock);
+        sleep(1);
         printf("****\n");
         printf("queue get signal\n");
         printf("****\n");

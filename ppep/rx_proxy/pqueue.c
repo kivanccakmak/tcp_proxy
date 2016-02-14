@@ -106,7 +106,6 @@ static void bubble_up(pqueue_t *q, size_t i)
     size_t parent_node;
     void *moving_node = q->d[i];
     pqueue_pri_t moving_pri = q->getpri(moving_node);
-    printf("moving_pri: %d\n", (int) moving_pri);
 
     for (parent_node = parent(i);
          ((i > 1) && q->cmppri(q->getpri(q->d[parent_node]), moving_pri));
@@ -150,8 +149,6 @@ static void percolate_down(pqueue_t *q, size_t i)
         i = child_node;
     }
 
-    printf("\n");
-    printf("\n");
     q->d[i] = moving_node;
     q->setpos(moving_node, i);
 }
