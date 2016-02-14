@@ -16,11 +16,15 @@ static void forward_data(fqueue_t* fq, int pack_cnt);
 void *wait2forward(void *args) {
     int pack_cnt = 0;
     bool send_flag = false;
+    queue_args_t* queue_args = NULL;
+    fqueue_t *fq = NULL;
+    pool_t *pl = NULL;
 
-    fqueue_t *fq = (fqueue_t *) args;
-    pool_t *pl = (pool_t *) args;
+    queue_args = (queue_args_t*) args;
+    fq = queue_args->fq;
+    pl = queue_args->pl;
+
     printf("fq->byte: %d\n", fq->byte_capacity); 
-    
     printf("trying to lock!\n");
     pthread_mutex_lock(&pl->lock);
     printf("======\n");
