@@ -56,11 +56,11 @@ pool_t* pool_init()
     pool_t *pl;
 
     // initialize priority queue
+
     pq = pqueue_init(10, cmp_pri, get_pri, set_pri,
             get_pos, set_pos);
-    pl = (pool_t *) malloc(sizeof(pool_t));
-    pl->pq = (pqueue_t *) malloc(sizeof(pqueue_t));
 
+    pl = (pool_t *) malloc(sizeof(pool_t));
     pthread_mutex_init(&pl->lock, NULL);
     pthread_cond_init(&pl->cond, NULL);
     pl->pq = pq;

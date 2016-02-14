@@ -10,7 +10,7 @@
 #include "../boss_server.h"
 #include "../../network/network.h"
 
-#define MAX_PACKET 50
+#define MAX_PACKET 10
 
 struct rx_params{
     FILE *fp;
@@ -25,6 +25,11 @@ struct pxy_params{
 struct stream_params{
     char *rx_pxy_ip;
     char *rx_pxy_port;
+};
+
+struct queue_params{
+    pool_t* pl;
+    fqueue_t* fq;
 };
 
 #endif

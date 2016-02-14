@@ -20,8 +20,12 @@ void *wait2forward(void *args) {
     fqueue_t *fq = (fqueue_t *) args;
     pool_t *pl = (pool_t *) args;
     printf("fq->byte: %d\n", fq->byte_capacity); 
-
+    
+    printf("trying to lock!\n");
     pthread_mutex_lock(&pl->lock);
+    printf("======\n");
+    printf("locked!\n");
+    printf("======\n");
     sleep(5);
 
     while (1) {

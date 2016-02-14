@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     struct rx_params *rx_args;
     struct pxy_params *pxy_args;
     struct stream_params *stream_args;
-    queue_args_t *queue_args;
+    struct queue_params *queue_args;
     pthread_t rx_id, boss_id, 
               queue_id, stream_id;
     
@@ -68,40 +68,40 @@ int main(int argc, char *argv[])
     pl = pool_init();
 
     // init boss server thread
-    printf("==========================\n");
-    printf("init run proxy thread \n");
-    printf("==========================\n");
-    pxy_args = (struct pxy_params*)
-        malloc(sizeof(struct pxy_params));
-    pxy_args->pl = pl;
-    pxy_args->recv_sock = pxy_rcv_sock;
-    pthread_create(&boss_id, NULL, &run_rx_proxy, pxy_args);
+    /*printf("==========================\n");*/
+    /*printf("init run proxy thread \n");*/
+    /*printf("==========================\n");*/
+    /*pxy_args = (struct pxy_params*)*/
+        /*malloc(sizeof(struct pxy_params));*/
+    /*pxy_args->pl = pool_init();*/
+    /*pxy_args->recv_sock = pxy_rcv_sock;*/
+    /*pthread_create(&boss_id, NULL, &run_rx_proxy, pxy_args);*/
 
     // init fwd queue thread
     printf("==========================\n");
     printf("init fwd_queue thread \n");
     printf("==========================\n");
-    queue_args = (queue_args_t *)
-        malloc(sizeof(queue_args_t));
+    queue_args = (struct queue_params*) 
+        malloc(sizeof(struct queue_params));
     queue_args->pl = pl;
     queue_args->fq = fq;
     pthread_create(&queue_id, NULL, &run_rx_queue, queue_args);
     sleep(3);
     
     // init stream thread
-    printf("==========================\n");
-    printf("init stream thrad\n");
-    printf("==========================\n");
-    stream_args = (struct stream_params*)
-        malloc(sizeof(struct stream_params));
-    stream_args->rx_pxy_port = rx_proxy_port;
-    stream_args->rx_pxy_ip = dest_ip;
-    pthread_create(&stream_id, NULL, &run_stream, stream_args);
+    /*printf("==========================\n");*/
+    /*printf("init stream thrad\n");*/
+    /*printf("==========================\n");*/
+    /*stream_args = (struct stream_params*)*/
+        /*malloc(sizeof(struct stream_params));*/
+    /*stream_args->rx_pxy_port = rx_proxy_port;*/
+    /*stream_args->rx_pxy_ip = dest_ip;*/
+    /*pthread_create(&stream_id, NULL, &run_stream, stream_args);*/
     
     pthread_join(rx_id, NULL);
     pthread_join(queue_id, NULL);
-    pthread_join(boss_id, NULL);
-    pthread_join(stream_id, NULL);
+    /*pthread_join(boss_id, NULL);*/
+    /*pthread_join(stream_id, NULL);*/
 
     return 0;
 }
@@ -128,7 +128,12 @@ static void* run_stream(void *params)
  */
 static void* run_rx_queue(void *params)
 {
-    queue_args_t* queue_args = (queue_args_t*) params;
+    pool_t* pl = (pool_t*) params;
+    fqueue_t* fq = (fqueue_t*) params;
+    queue_args_t* queue_args = 
+        (queue_args_t*) malloc(sizeof(queue_args_t));
+    queue_args->pl = pl;
+    queue_args->fq = fq;
     wait2forward(queue_args);
     return NULL;
 }
