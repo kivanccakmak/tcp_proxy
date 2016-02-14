@@ -185,6 +185,7 @@ static void test_boss(char *pxy_port, char *pxy_ip)
 
     encaps_packet_t **packets = NULL;
     encaps_packet_t *temp = NULL;
+    encaps_packet_t packet;
 
     packets = (encaps_packet_t **)
         malloc(sizeof(encaps_packet_t*) * MAX_PACKET);
@@ -201,14 +202,18 @@ static void test_boss(char *pxy_port, char *pxy_ip)
     sockfd = fwd_sock_init(pxy_ip, pxy_port);
 
     for (i = 0; i < MAX_PACKET; i++) {
+        memcpy(packet.raw_packet, packets[i]->raw_packet, BLOCKSIZE);
+        packet.seq = (unsigned short) packets[i]->seq;
         while (byte < BLOCKSIZE) {
-            nwrite = write(sockfd, packets[i], BLOCKSIZE - byte);
-        }
-        if (nwrite < 0) {
-            perror("Error");
-            exit(1);
-        } else if (nwrite > 0) {
-            byte += nwrite;
+            nwrite = send(sockfd, 
+                    &((unsigned char*) &packet)[byte], 
+                    PACKET_SIZE-byte, 0);
+            if (nwrite < 0) {
+                perror("Error");
+                exit(1);
+            } else if (nwrite > 0) {
+                byte += nwrite;
+            }
         }
         byte = 0;
     }

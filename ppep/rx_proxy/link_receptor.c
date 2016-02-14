@@ -55,6 +55,7 @@ void *rx_chain(void *args)
             }
         }
         add2queue(pl, raw_buf);
+        printf("raw_buf: %s\n", raw_buf);
         *(raw_buf + recv_count + 1) = '\0';
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
 	recv_count = 0;
@@ -75,9 +76,11 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
     printf("in add2queue\n");
     encaps_packet_t *packet;
+    packet = (encaps_packet_t *) raw_packet;
+
     bool nudge = false;
     node_t *ns = (node_t *) malloc(sizeof(node_t));
-    packet = (encaps_packet_t *) raw_packet;
+
     printf("packet->raw_packet: %s\n", packet->raw_packet);
     printf("packet->seq: %d\n", packet->seq);
     ns->pri = packet->seq;
