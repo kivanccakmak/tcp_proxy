@@ -40,7 +40,6 @@ void *wait2forward(void *args) {
 
     if (conn_res < 0) {
         perror("forward connection failed");
-        exit(0);
     }
 
     // init forward queue
@@ -108,7 +107,6 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
             printf("nwrite: %d\n", nwrite);
             if (nwrite < 0) {
                 perror("Error in forward_data");
-                exit(0);
             } else if (nwrite > 0) {
                 byte += nwrite;
             }
@@ -152,6 +150,7 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
         fq->buffer[packets] = (char*) ns->raw_packet;
         printf("-- adding --\n");
         packets += 1;
+        printf("-- after adding --\n");
         while (flag == true) {
             ns = (node_t *) malloc(sizeof(node_t));
             ns = (node_t *) pqueue_pop(pq);
@@ -160,21 +159,29 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
                 fq->buffer = (char **) realloc(fq->buffer,
                         fq->byte_capacity);
             }
-            pack_num = -1 * ns->pri;
-            printf("*pack_num*: %d\n", pack_num);
-            if ( pack_num == fq->sent + packets + 1) {
-                printf("-- adding --\n");
-                printf("ns->raw_packet: %s\n", ns->raw_packet);
-                fq->buffer[packets] = (char*) ns->raw_packet;
-                printf("fq->buffer[packets]: %s\n", fq->buffer[packets]);
-                packets += 1;
-                fq->byte_count += (int) sizeof(ns->raw_packet);
-            } else {
-                printf("-- no more add --\n");
-                pqueue_insert(pq, ns);
-                printf("-- blah --\n");
+            printf("before pack_num\n");
+            if (ns != NULL) {
+                pack_num = -1 * ns->pri;
+                printf("*pack_num*: %d\n", pack_num);
+                if ( pack_num == fq->sent + packets + 1) {
+                    printf("-- adding --\n");
+                    printf("ns->raw_packet: %s\n", ns->raw_packet);
+                    fq->buffer[packets] = (char*) ns->raw_packet;
+                    printf("fq->buffer[packets]: %s\n", fq->buffer[packets]);
+                    packets += 1;
+                    fq->byte_count += (int) sizeof(ns->raw_packet);
+                    printf("fq->byte_count: %d\n", fq->byte_count);
+                } else {
+                    printf("-- no more add --\n");
+                    pqueue_insert(pq, ns);
+                    printf("-- blah --\n");
+                    flag = false;
+                }
+            } else{
+                printf("ns is NULL\n");
                 flag = false;
             }
+
         }
         return packets;
     } 

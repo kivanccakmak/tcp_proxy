@@ -216,7 +216,6 @@ static void test_boss(char *pxy_port, char *pxy_ip)
                     PACKET_SIZE-byte, 0);
             if (nwrite < 0) {
                 perror("Error");
-                exit(1);
             } else if (nwrite > 0) {
                 byte += nwrite;
             }
