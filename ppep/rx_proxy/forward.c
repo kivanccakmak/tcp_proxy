@@ -62,23 +62,27 @@ void *wait2forward(void *args) {
         send_flag = true;
         while (send_flag == true) {
             pack_cnt = fill_queue(pl->pq, fq);  
-            printf("fq->buffer[0]: %s\n", fq->buffer[0]);
-            printf("queue unlocks\n");
-            pthread_mutex_unlock(&pl->lock);
-            printf("queue unlocked\n");
-            printf("pack_cnt: %d\n", pack_cnt);
             if (pack_cnt > 0) {
-                fq->state = SEND;
-                forward_data(fq, pack_cnt);
-                pl->sent_min_seq += pack_cnt;
+                printf("fq->buffer[0]: %s\n", fq->buffer[0]);
+                printf("queue unlocks\n");
+                pthread_mutex_unlock(&pl->lock);
+                printf("queue unlocked\n");
+                printf("pack_cnt: %d\n", pack_cnt);
+                if (pack_cnt > 0) {
+                    fq->state = SEND;
+                    forward_data(fq, pack_cnt);
+                    pl->sent_min_seq += pack_cnt;
+                } else {
+                    fq->state = SLEEP;
+                }
+                if (pl->avail_min_seq == pl->sent_min_seq) 
+                    send_flag = false;
+                else
+                    send_flag = true;
+                free(fq->buffer);
             } else {
-                fq->state = SLEEP;
-            }
-            if (pl->avail_min_seq == pl->sent_min_seq) 
                 send_flag = false;
-            else
-                send_flag = true;
-            free(fq->buffer);
+            }
         }
     }
 }
@@ -138,6 +142,9 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
 
     ns = (node_t *) malloc(sizeof(node_t));
     ns = (node_t *) pqueue_pop(pq);
+    if (ns == NULL) {
+        return -1;
+    }
     pack_num = -1 * (int) ns->pri;
     printf("pack_num: %d\n", pack_num);
     printf("fq->sent: %d\n", fq->sent);
