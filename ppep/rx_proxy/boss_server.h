@@ -103,7 +103,8 @@ typedef struct cb_rx_args{
  */
 typedef struct queue_args{
     pool_t *pl;
-    fqueue_t *fq;
+    char *dest_port;
+    char *dest_ip;
 } queue_args_t;
 
 void server_listen(int sockfd, pool_t* pool);
@@ -111,9 +112,5 @@ void server_listen(int sockfd, pool_t* pool);
 pool_t* pool_init(); 
 
 int rcv_sock_init(char *server_port);
-
-int fwd_sock_init(char *dest_ip, char *dest_port);
-
-fqueue_t* fqueue_init(int sockfd);
 
 #endif

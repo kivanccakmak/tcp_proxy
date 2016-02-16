@@ -14,14 +14,34 @@ static void forward_data(fqueue_t* fq, int pack_cnt);
  * @return 
  */
 void *wait2forward(void *args) {
-    int pack_cnt = 0;
+    int pack_cnt = 0, conn_res = 0;
+    int sockfd;
     bool send_flag = false;
-    queue_args_t* queue_args = NULL;
-    fqueue_t *fq = NULL;
+    char *dest_ip, *dest_port;
+    struct sockaddr_in server;
+    fqueue_t *fq;
     pool_t *pl = NULL;
+    queue_args_t* queue_args = NULL;
 
     queue_args = (queue_args_t*) args;
-    fq = queue_args->fq;
+    dest_ip = queue_args->dest_ip;
+    dest_port = queue_args->dest_port;
+    
+    // init receive socket
+    server.sin_addr.s_addr = inet_addr(dest_ip);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(dest_port));
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    conn_res = connect(sockfd, (struct sockaddr*) &server,
+            sizeof(server));
+
+    // init forward queue
+    fq = (fqueue_t*) malloc(sizeof(fqueue_t));
+    fq->byte_count = 0;
+    fq->byte_capacity = INIT_QUEUE_SIZE;
+    fq->sockfd = sockfd;
+    fq->state = SLEEP;
+
     pl = queue_args->pl;
 
     pthread_mutex_lock(&pl->lock);

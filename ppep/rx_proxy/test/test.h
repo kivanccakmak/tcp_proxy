@@ -29,7 +29,8 @@ struct stream_params{
 
 struct queue_params{
     pool_t* pl;
-    fqueue_t* fq;
+    char *dest_ip;
+    char *dest_port;
 };
 
 #endif
