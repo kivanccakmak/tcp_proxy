@@ -54,7 +54,8 @@ void *wait2forward(void *args) {
         printf("****\n");
         send_flag = true;
         while (send_flag == true) {
-            pack_cnt = fill_queue(pl->pq, fq);
+            pack_cnt = fill_queue(pl->pq, fq);  
+            printf("fq->buffer[0]: %s\n", fq->buffer[0]);
             printf("queue unlocks\n");
             pthread_mutex_unlock(&pl->lock);
             printf("queue unlocked\n");
@@ -88,11 +89,15 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
     int count = 0;
     int nwrite = 0;
     printf("in forward_data()\n");
+    printf("pack_cnt: %d\n", pack_cnt);
 
     for (count = 0; count < pack_cnt; count++) {
         while (byte < BLOCKSIZE) {
-            nwrite = send(fq->sockfd, fq->buffer[pack_cnt],
+            printf("before send()\n");
+            printf("packet: %s\n", fq->buffer[count]);
+            nwrite = send(fq->sockfd, fq->buffer[count],
                     BLOCKSIZE - byte, 0);
+            printf("nwrite: %d\n", nwrite);
             if (nwrite < 0) {
                 perror("Error in forward_data");
                 exit(0);
@@ -150,7 +155,9 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
             printf("*pack_num*: %d\n", pack_num);
             if ( pack_num == fq->sent + packets + 1) {
                 printf("-- adding --\n");
+                printf("ns->raw_packet: %s\n", ns->raw_packet);
                 fq->buffer[packets] = (char*) ns->raw_packet;
+                printf("fq->buffer[packets]: %s\n", fq->buffer[packets]);
                 packets += 1;
                 fq->byte_count += (int) sizeof(ns->raw_packet);
             } else {
