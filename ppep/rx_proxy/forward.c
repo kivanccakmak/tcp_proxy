@@ -17,7 +17,7 @@ void *wait2forward(void *args) {
     int pack_cnt = 0, conn_res = 0;
     int sockfd;
     bool send_flag = false;
-    char *dest_ip, *dest_port;
+    char *dest_ip = NULL, *dest_port = NULL;
     struct sockaddr_in server;
     fqueue_t *fq;
     pool_t *pl = NULL;
@@ -26,6 +26,9 @@ void *wait2forward(void *args) {
     queue_args = (queue_args_t*) args;
     dest_ip = queue_args->dest_ip;
     dest_port = queue_args->dest_port;
+
+    printf("dest_ip: %s\n", dest_ip);
+    printf("dest_port: %s\n", dest_port);
     
     // init receive socket
     server.sin_addr.s_addr = inet_addr(dest_ip);
@@ -34,6 +37,11 @@ void *wait2forward(void *args) {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     conn_res = connect(sockfd, (struct sockaddr*) &server,
             sizeof(server));
+
+    if (conn_res < 0) {
+        perror("forward connection failed");
+        exit(0);
+    }
 
     // init forward queue
     fq = (fqueue_t*) malloc(sizeof(fqueue_t));
@@ -105,6 +113,7 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
                 byte += nwrite;
             }
         }
+        byte = 0;
         fq->sent += 1;
     } 
 }
