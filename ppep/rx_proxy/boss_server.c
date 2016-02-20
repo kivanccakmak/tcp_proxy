@@ -27,12 +27,12 @@ int main(int argc, char * argv[])
     dest_port = argv[3];
 
     rcv_sock = rcv_sock_init(server_port);
-    fwd_sock = fwd_sock_init(dest_ip, dest_port);
 
     pl = pool_init();
-    fq = fqueue_init(fwd_sock);
 
     que_args->pl = pl;
+    queue_args->dest_ip = dest_ip;
+    queue_args->dest_port = dest_port;
     que_args->fq = fq;
     
     wait2forward(que_args);
@@ -70,27 +70,6 @@ pool_t* pool_init()
     pl->pq = pq;
     
     return pl;
-}
-
-/**
- * @brief initializes forward queue 
- * which passes data through end
- * destination
- *
- * @param[in] sockfd
- *
- * @return
- */
-fqueue_t* fqueue_init(int sockfd)
-{
-    fqueue_t *fq = (fqueue_t *) malloc(sizeof(fqueue_t));
-    fq->byte_count = 0;
-    fq->byte_capacity = INIT_QUEUE_SIZE;
-
-    fq->sockfd = sockfd;
-    fq->state = SLEEP;
-
-    return fq;
 }
 
 /**
@@ -150,38 +129,6 @@ int rcv_sock_init(char *server_port) {
     }
     return sockfd;
 } 
-
-/**
- * @brief sets socket file descriptor 
- * to forward data through agnostic
- * end destination with forward module.
- *
- * @param[in] dest_ip
- * @param[in] dest_port
- *
- * @return sockfd
- */
-int fwd_sock_init(char *dest_ip, char *dest_port)
-{
-    int conn_res, sockfd = 0;
-
-    struct sockaddr_in server;
-    server.sin_addr.s_addr = inet_addr(dest_ip);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(dest_port));
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    conn_res = connect(sockfd, (struct sockaddr*) &server,
-            sizeof(server));
-
-    if (conn_res < 0) {
-        perror("connection failed.");
-        exit(0);
-    } else{
-        return sockfd;
-    }
-}
 
  /**
   * @brief 

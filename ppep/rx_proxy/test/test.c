@@ -31,14 +31,13 @@ int main(int argc, char *argv[])
 
     char *dest_port, *dest_ip, *rx_proxy_port; 
     char *output;
-    int pxy_rcv_sock, pxy_fwd_sock;
+    int pxy_rcv_sock;
     FILE *fp;
-    pool_t *pl;
-    fqueue_t *fq;
+    pool_t *pl = NULL;
     struct rx_params *rx_args;
     struct pxy_params *pxy_args;
     struct stream_params *stream_args;
-    struct queue_params* queue_prm;
+    queue_args_t* queue_args;
     pthread_t rx_id, boss_id, 
               queue_id, stream_id;
     
@@ -47,31 +46,32 @@ int main(int argc, char *argv[])
     dest_ip = argv[2];
     rx_proxy_port = argv[3];
     output = argv[4];
+
+    printf("dest_ip: %s\n", dest_ip);
+    printf("dest_port: %s\n", dest_port);
     
     fp = fopen(output, "a");
+    pxy_rcv_sock = rcv_sock_init(rx_proxy_port);
 
     // init receive thread
-    pxy_rcv_sock = rcv_sock_init(dest_port);
     rx_args = (struct rx_params*) 
         malloc(sizeof(struct rx_params));
     rx_args->fp = fp;
     rx_args->port = dest_port;
     pthread_create(&rx_id, NULL, &run_receive, rx_args);
     sleep(5);
-
-    pxy_fwd_sock = fwd_sock_init(dest_ip, dest_port);
-    fq = fqueue_init(pxy_fwd_sock);
-
-    fq->byte_count = -1;
+    
     pl = pool_init();
 
     sleep(5);
     // init fwd queue thread
-    queue_prm = (struct queue_params*) 
-        malloc(sizeof(struct queue_params));
-    queue_prm->pl = pl;
-    queue_prm->fq = fq;
-    pthread_create(&queue_id, NULL, &run_rx_queue, (void *) queue_prm);
+    queue_args = (queue_args_t*) 
+        malloc(sizeof(queue_args_t));
+    queue_args->pl = pl;
+    queue_args->dest_ip = dest_ip;
+    queue_args->dest_port = dest_port;
+    pthread_create(&queue_id, NULL, 
+            &wait2forward, (void *) queue_args);
     sleep(5);
 
     // init boss server thread
@@ -79,7 +79,8 @@ int main(int argc, char *argv[])
         malloc(sizeof(struct pxy_params));
     pxy_args->pl = pl;
     pxy_args->recv_sock = pxy_rcv_sock;
-    pthread_create(&boss_id, NULL, &run_rx_proxy, pxy_args);
+    pthread_create(&boss_id, NULL, &run_rx_proxy, 
+            pxy_args);
 
     // init stream thread
     printf("==========================\n");
@@ -89,7 +90,8 @@ int main(int argc, char *argv[])
         malloc(sizeof(struct stream_params));
     stream_args->rx_pxy_port = rx_proxy_port;
     stream_args->rx_pxy_ip = dest_ip;
-    pthread_create(&stream_id, NULL, &run_stream, stream_args);
+    pthread_create(&stream_id, NULL, &run_stream, 
+            stream_args);
     
     pthread_join(rx_id, NULL);
     pthread_join(queue_id, NULL);
@@ -173,7 +175,13 @@ static void test_boss(char *pxy_port, char *pxy_ip)
     int *ind_array;
     int i = 0;
     int sockfd;
+    int conn_res = 0;
     int byte = 0, nwrite = 0;
+    struct sockaddr_in server;
+
+    server.sin_addr.s_addr = inet_addr(pxy_ip);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(pxy_port));
 
     encaps_packet_t **packets = NULL;
     encaps_packet_t *temp = NULL;
@@ -191,7 +199,13 @@ static void test_boss(char *pxy_port, char *pxy_ip)
         packets[i] = temp;
     }
     
-    sockfd = fwd_sock_init(pxy_ip, pxy_port);
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    conn_res = connect(sockfd, (struct sockaddr*) &server,
+            sizeof(server));
+    if (conn_res < 0){
+        perror("Connection Failed");
+        exit(0);
+    }
 
     for (i = 0; i < MAX_PACKET; i++) {
         memcpy(packet.raw_packet, packets[i]->raw_packet, BLOCKSIZE);
@@ -202,7 +216,6 @@ static void test_boss(char *pxy_port, char *pxy_ip)
                     PACKET_SIZE-byte, 0);
             if (nwrite < 0) {
                 perror("Error");
-                exit(1);
             } else if (nwrite > 0) {
                 byte += nwrite;
             }
