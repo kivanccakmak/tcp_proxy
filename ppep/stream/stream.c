@@ -66,16 +66,13 @@ static void stream(char *ip_addr, char *port, FILE *fp)
             read_file(fp, byte_count, byte_count + residue, thr_buff);
             capacity = residue;
         }
-	printf("capacity: %d\n", capacity);
         while (temp_count < capacity) {
             amount = write(sockfd, thr_buff+temp_count, 
                     capacity-temp_count); 
             if (amount > 0) {
                 temp_count += amount;
             }
-            printf("amount: %d\n", amount);
         }
-	printf("byte_count: %d\n", byte_count);
         byte_count += temp_count;
         temp_count = 0;
     }
