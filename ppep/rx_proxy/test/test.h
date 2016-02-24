@@ -10,7 +10,13 @@
 #include "../boss_server.h"
 #include "../../network/network.h"
 
-#define MAX_PACKET 10
+
+/**
+ * @brief number of raw data
+ * sent towards receiver side
+ * of proxy
+ */
+#define MAX_PACKET 100
 
 struct rx_params{
     FILE *fp;
