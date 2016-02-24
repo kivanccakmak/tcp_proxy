@@ -96,24 +96,19 @@ void get_packets(char *port, FILE *fp)
                 break;
             }
         }
-        printf("*MESSAGE*: %s\n", buffer);
         if (n < 1) {
             break;
         }
         recv_count = 0;
         fprintf(fp, "%s", buffer);
     }
-    printf("after while loop\n");
-    printf("buffer: %s\n", buffer);
-    printf("recv_count: %d\n", recv_count);
     if (recv_count > 0) {
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
                 fprintf(fp, "%c", buffer[i]);
+                fflush(fp);
             }
-            printf("buffer[%d]:%c\n", i, buffer[i]);
         }
-        /*fprintf(fp, "%*s", recv_count, buffer);*/
     }
     fclose(fp);
 }
