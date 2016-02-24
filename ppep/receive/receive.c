@@ -96,6 +96,7 @@ void get_packets(char *port, FILE *fp)
         }
         recv_count = 0;
         fprintf(fp, "%s", buffer);
+        fflush(fp);
     }
     if (recv_count > 0) {
         for (i = 0; i < recv_count; i++) {
