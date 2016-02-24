@@ -32,10 +32,8 @@ int main(int argc, char *argv[])
  */
 void get_packets(char *port, FILE *fp) 
 { 
-    int rs_addr;
-    int sockfd;
-    int yes = 1;
-    int n = 1, i = 0;
+    int sockfd, rs_addr;
+    int yes = 1, n = 1, i = 0;
     int recv_count = 0;
     int set_val, bind_val, listen_val;
     struct sockaddr_storage their_addr;
@@ -52,8 +50,7 @@ void get_packets(char *port, FILE *fp)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    rs_addr = getaddrinfo(NULL, port,
-            &hints, &addr);
+    rs_addr = getaddrinfo(NULL, port, &hints, &addr);
     if (rs_addr != 0) {
         fprintf(stderr,
                 "getaddrinfo: %s\n", gai_strerror(rs_addr));
@@ -61,10 +58,8 @@ void get_packets(char *port, FILE *fp)
 
     sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
-
     set_val = setsockopt(sockfd, SOL_SOCKET,
             SO_REUSEADDR, &yes, sizeof(int));
-
     bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
 
     if (bind_val == -1) {
