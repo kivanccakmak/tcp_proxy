@@ -63,11 +63,7 @@ void *wait2forward(void *args) {
         while (send_flag == true) {
             pack_cnt = fill_queue(pl->pq, fq);  
             if (pack_cnt > 0) {
-                printf("fq->buffer[0]: %s\n", fq->buffer[0]);
-                printf("queue unlocks\n");
                 pthread_mutex_unlock(&pl->lock);
-                printf("queue unlocked\n");
-                printf("pack_cnt: %d\n", pack_cnt);
                 if (pack_cnt > 0) {
                     fq->state = SEND;
                     forward_data(fq, pack_cnt);

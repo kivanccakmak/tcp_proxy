@@ -179,8 +179,6 @@ static void *tx_chain(void *args)
     fd = tx_link->fd;
     while (1) {
         pthread_mutex_lock(&buff->lock);
-        printf("buff->get_ind: %d\n", buff->get_ind);
-        printf("buff->set_ind: %d\n", buff->set_ind);
         if (buff->set_ind >= buff->get_ind) {
             ind = buff->get_ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
@@ -484,14 +482,23 @@ LOOP:
                 else
                     exit_flag = true;
             }
-            /*printf("raw_buf: %s\n", raw_buf);*/
+            if (recv_count < BLOCKSIZE && recv_count > 0) {
+                int count = 0;
+                for (count = recv_count; count < BLOCKSIZE; count++) {
+                    raw_buf[count] = '\0';
+                }
+                printf("raw_buf: %s\n", raw_buf);
+                printf("sizeof(raw_buf): %d\n", (int) sizeof(raw_buf));
+            }
+            i++;
+            if (recv_count > 0) {
+                add2buff(buff, raw_buf);
+            }
+            raw_buf = (char *) malloc(BLOCKSIZE);
             if (exit_flag) {
                 close(split_sock);
                 goto LOOP;
             }
-            i++;
-            add2buff(buff, raw_buf);
-            raw_buf = (char *) malloc(BLOCKSIZE);
         }
     }
 }
