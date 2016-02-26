@@ -107,7 +107,7 @@ typedef struct queue_args{
     char *dest_ip;
 } queue_args_t;
 
-void server_listen(int sockfd, pool_t* pool);
+void server_listen(char* server_port, pool_t* pool);
 
 pool_t* pool_init(); 
 

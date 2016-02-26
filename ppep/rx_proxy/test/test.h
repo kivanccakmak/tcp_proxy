@@ -24,7 +24,7 @@ struct rx_params{
 };
 
 struct pxy_params{
-    int recv_sock;
+    char* server_port;
     pool_t* pl;
 };
 

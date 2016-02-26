@@ -14,7 +14,7 @@ int main(int argc, char * argv[])
     }
 
     char *dest_ip, *dest_port, *server_port;
-    int rcv_sock, fwd_sock;
+    int fwd_sock;
     fqueue_t *fq;
     pool_t *pl;
     queue_args_t *que_args;
@@ -26,8 +26,6 @@ int main(int argc, char * argv[])
     dest_ip = argv[2];
     dest_port = argv[3];
 
-    rcv_sock = rcv_sock_init(server_port);
-
     pl = pool_init();
 
     que_args->pl = pl;
@@ -38,7 +36,7 @@ int main(int argc, char * argv[])
     sleep(3);
     
     printf("to server listen\n");
-    server_listen(rcv_sock, pl);
+    server_listen(server_port, pl);
 
     return 0;
 }
@@ -72,64 +70,6 @@ pool_t* pool_init()
     return pl;
 }
 
-/**
- * @brief initiates server socket
- * file descriptor to accpet connections.
- * new socket file descriptors would be
- * created after accepting connections
- * from this socket
- *
- * @param[in] server_port
- *
- * @return 
- */
-int rcv_sock_init(char *server_port) {
-    int sockfd, rs_addr;
-    int bind_val, set_val, yes = 1;
-    struct addrinfo hints, *addr;
-
-    addr = (struct addrinfo*) 
-        malloc(sizeof(struct addrinfo));
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE; 
-
-    rs_addr = getaddrinfo(NULL, server_port,
-            &hints, &addr);
-    if (rs_addr != 0) {
-        perror("getaddrinfo:");
-        exit(0);
-    }
-
-    sockfd = socket(addr->ai_family, 
-            addr->ai_socktype, addr->ai_protocol);
-    if (sockfd == -1) {
-        perror("socket");
-        exit(0);
-    }
-
-    set_val =
-        setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-                sizeof(int));
-    printf("set_val: %d\n", set_val);
-    bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
-    if(bind_val == -1){
-        perror("server: bind");
-        exit(0);
-    } else {
-        printf("socket binded\n");
-    }
-
-    if (addr == NULL){
-        fprintf(stderr, "server: failed to bind\n");
-        exit(0);
-    } else {
-        printf("addr set\n");
-    }
-    return sockfd;
-} 
-
  /**
   * @brief 
   *
@@ -138,22 +78,61 @@ int rcv_sock_init(char *server_port) {
   * new TCP connection established
   * from transmitter side of proxy.
   *
-  * @param[in] sockfd
+  * @param[in] server_port
   * @param[out] queue
   */
-void server_listen(int rcv_sock, pool_t *pl)
+void server_listen(char* server_port, pool_t *pl)
 {
-    int newfd;
+    int sockfd, newfd;
+    int rs_addr;
+    int bind_val, set_val, yes = 1;
     int listen_val, thr_val;
     char tx_ip[INET6_ADDRSTRLEN];
     uint32_t tx_port;
     struct sigaction sig_sa;
     struct sockaddr_storage their_addr;
+    struct addrinfo hints, *addr;
     socklen_t sin_size;
     rx_args_t *rx_args;
 
+    // set server socket
+    addr = (struct addrinfo*) malloc(sizeof(struct addrinfo));
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    rs_addr = getaddrinfo(NULL, server_port,
+            &hints, &addr);
+    if (rs_addr != 0) {
+        perror("getaddrinfo:");
+        exit(0);
+    }
+
+    sockfd = socket(addr->ai_family,
+            addr->ai_socktype, addr->ai_protocol);
+    if (sockfd == -1) {
+        perror("socket");
+        exit(0);
+    }
+
+    set_val = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
+            sizeof(int));
+    bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
+    if (bind_val == -1) {
+        perror("server: bind");
+        exit(0);
+    } else{
+        printf("socket binded\n");
+    }
+
+    if (addr == NULL) {
+        fprintf(stderr, "server: failed to bind\n");
+        exit(0);
+    }
+    
     printf("-listen()\n");
-    listen_val = listen(rcv_sock, BACKLOG);
+    listen_val = listen(sockfd, BACKLOG);
     if (listen_val == -1){
         perror("listen");
         exit(1);
@@ -163,9 +142,10 @@ void server_listen(int rcv_sock, pool_t *pl)
     sig_sa = sig_init();
     printf("server: waiting for connections\n");
     sin_size = sizeof their_addr;
-
+    
+    // wait for new TCP connections and accept them
     while (1) {
-        newfd = accept(rcv_sock, (struct sockaddr *)&their_addr, 
+        newfd = accept(sockfd, (struct sockaddr *)&their_addr, 
                 &sin_size);
 
         pthread_t thread_id;

@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
 
     char *dest_port, *dest_ip, *rx_proxy_port; 
     char *output;
-    int pxy_rcv_sock;
     FILE *fp;
     pool_t *pl = NULL;
     struct rx_params *rx_args;
@@ -51,7 +50,6 @@ int main(int argc, char *argv[])
     printf("dest_port: %s\n", dest_port);
     
     fp = fopen(output, "a");
-    pxy_rcv_sock = rcv_sock_init(rx_proxy_port);
 
     // init receive thread
     rx_args = (struct rx_params*) 
@@ -78,7 +76,7 @@ int main(int argc, char *argv[])
     pxy_args = (struct pxy_params*)
         malloc(sizeof(struct pxy_params));
     pxy_args->pl = pl;
-    pxy_args->recv_sock = pxy_rcv_sock;
+    pxy_args->server_port = rx_proxy_port;
     pthread_create(&boss_id, NULL, &run_rx_proxy, 
             pxy_args);
 
@@ -139,7 +137,7 @@ static void* run_rx_proxy(void *params)
 {
     struct pxy_params* pxy_ptr = 
         (struct pxy_params*) params;
-    server_listen(pxy_ptr->recv_sock, pxy_ptr->pl);
+    server_listen(pxy_ptr->server_port, pxy_ptr->pl);
     return NULL;
 }
 
