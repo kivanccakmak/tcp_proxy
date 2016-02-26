@@ -18,6 +18,7 @@ int main(int argc, char * argv[])
     fqueue_t *fq;
     pool_t *pl;
     queue_args_t *que_args;
+    pthread_t que_id, serv_id;
 
     que_args = (queue_args_t *) 
         malloc(sizeof(queue_args_t));
@@ -32,11 +33,13 @@ int main(int argc, char * argv[])
     que_args->dest_ip = dest_ip;
     que_args->dest_port = dest_port;
     
-    wait2forward(que_args);
+    pthread_create(&que_id, NULL, &wait2forward,
+            (void*) que_args);
     sleep(3);
     
-    printf("to server listen\n");
     server_listen(server_port, pl);
+
+    pthread_join(que_id, NULL);
 
     return 0;
 }
@@ -140,7 +143,7 @@ void server_listen(char* server_port, pool_t *pl)
 
     // initialize sigaction to wait connections
     sig_sa = sig_init();
-    printf("server: waiting for connections\n");
+    printf("server: waiting connections from: %s\n", server_port);
     sin_size = sizeof their_addr;
     
     // wait for new TCP connections and accept them
