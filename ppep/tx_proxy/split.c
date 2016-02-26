@@ -80,10 +80,12 @@ int main(int argc, char *argv[])
     } else {
         printf("controller thread initiated\n");
     }
-
+    
+    printf("before join commands\n");
     pthread_join(queuer_id, NULL);
     pthread_join(getter_id, NULL);
     pthread_join(controller_id, NULL);
+    printf("all joined\n");
     return 0;
 }
 #endif
@@ -137,7 +139,9 @@ static void *run_controller(void *args)
         tx_args[i]->tx_link = tcp_links[i];
         thr_res = pthread_create(&t_id, 
                 NULL, &tx_chain, (void *) tx_args[i]);  
+        pthread_join(t_id, NULL);
     }
+    return NULL;
 }
 
 
@@ -175,6 +179,8 @@ static void *tx_chain(void *args)
     fd = tx_link->fd;
     while (1) {
         pthread_mutex_lock(&buff->lock);
+        printf("buff->get_ind: %d\n", buff->get_ind);
+        printf("buff->set_ind: %d\n", buff->set_ind);
         if (buff->set_ind >= buff->get_ind) {
             ind = buff->get_ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
@@ -187,8 +193,12 @@ static void *tx_chain(void *args)
                 send_res = send(fd, 
                     &((unsigned char*) &packet)[count],
                         PACKET_SIZE-count, 0);
-                if (send_res > 0)
+                printf("send_res: %d\n", send_res);
+                if (send_res > 0) {
                     count += send_res;
+                } else{
+                    printf("can't send\n");
+                }
             }
         } else {
             pthread_mutex_unlock(&buff->lock);
@@ -205,6 +215,7 @@ static void *tx_chain(void *args)
         }
         pthread_mutex_unlock(&tx_link->lock);
     }
+    printf("out of while\n");
 }
 
 /**
@@ -446,6 +457,7 @@ static void *get_payload(void *args)
     sin_size = sizeof(their_addr);
 
     while (1) {
+LOOP:
         split_sock = accept(split_sock, (struct sockaddr*)&their_addr,
                 &sin_size);
 
@@ -466,7 +478,7 @@ static void *get_payload(void *args)
                     & (exit_flag == false)) {
                 numbytes = recv(split_sock, raw_buf+recv_count,
                         BLOCKSIZE-recv_count, 0);
-                /*printf("numbytes: %d\n", numbytes);*/
+                printf("numbytes: %d\n", numbytes);
                 if (numbytes > 0)
                     recv_count += numbytes;
                 else
@@ -475,11 +487,10 @@ static void *get_payload(void *args)
             /*printf("raw_buf: %s\n", raw_buf);*/
             if (exit_flag) {
                 close(split_sock);
-                exit(0);
+                goto LOOP;
             }
             i++;
             add2buff(buff, raw_buf);
-            sleep(2);
             raw_buf = (char *) malloc(BLOCKSIZE);
         }
     }
@@ -517,11 +528,11 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
 
     }
     buff->set_ind++;
-    printf("===            === \n");
+    /*printf("===            === \n");*/
     buff->buffer[buff->set_ind] = raw_buf;
-    printf("buff->buffer[%d]: %s\n", buff->set_ind,
-            (char *) buff->buffer[buff->set_ind]);
-    printf("===            === \n");
+    /*printf("buff->buffer[%d]: %s\n", buff->set_ind,*/
+            /*(char *) buff->buffer[buff->set_ind]);*/
+    /*printf("===            === \n");*/
     buff->rx_byte += BLOCKSIZE;
     pthread_mutex_unlock(&buff->lock);
 }
