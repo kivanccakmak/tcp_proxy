@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include "time.h"
 
 #include "../network/network.h"
 #include "pqueue.h"

@@ -188,6 +188,7 @@ static void *tx_chain(void *args)
             count = 0;
             while (count < (int) PACKET_SIZE) {
                 printf("sending ...\n");
+                printf("%s\n", packet.raw_packet);
                 send_res = send(fd, 
                     &((unsigned char*) &packet)[count],
                         PACKET_SIZE-count, 0);
@@ -484,14 +485,16 @@ LOOP:
             }
             if (recv_count < BLOCKSIZE && recv_count > 0) {
                 int count = 0;
+                printf("**sizeof(raw_buf): %d\n", (int) sizeof(raw_buf));
                 for (count = recv_count; count < BLOCKSIZE; count++) {
                     raw_buf[count] = '\0';
                 }
-                printf("raw_buf: %s\n", raw_buf);
-                printf("sizeof(raw_buf): %d\n", (int) sizeof(raw_buf));
             }
+            printf("raw_buf: %s\n", raw_buf);
             i++;
             if (recv_count > 0) {
+                printf("add2buf\n");
+                printf("sizeof(raw_buf): %d\n", (int) sizeof(raw_buf));
                 add2buff(buff, raw_buf);
             }
             raw_buf = (char *) malloc(BLOCKSIZE);

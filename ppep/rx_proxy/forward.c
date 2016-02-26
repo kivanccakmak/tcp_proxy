@@ -19,6 +19,7 @@ void *wait2forward(void *args) {
     bool send_flag = false;
     char *dest_ip = NULL, *dest_port = NULL;
     struct sockaddr_in server;
+    struct timespec to;
     fqueue_t *fq;
     pool_t *pl = NULL;
     queue_args_t* queue_args = NULL;
@@ -48,17 +49,17 @@ void *wait2forward(void *args) {
     fq->byte_capacity = INIT_QUEUE_SIZE;
     fq->sockfd = sockfd;
     fq->state = SLEEP;
+    fq->sent = -1;
 
     pl = queue_args->pl;
-
     pthread_mutex_lock(&pl->lock);
 
     while (1) {
-        printf("queue in cond_wait()\n");
-        pthread_cond_wait(&pl->cond, &pl->lock);
-        printf("****\n");
-        printf("queue get signal\n");
-        printf("****\n");
+        printf("in cond wait\n");
+        to.tv_sec = 0;
+        clock_gettime(CLOCK_MONOTONIC, &to);
+        to.tv_sec += 5;
+        pthread_cond_timedwait(&pl->cond, &pl->lock, &to);
         send_flag = true;
         while (send_flag == true) {
             pack_cnt = fill_queue(pl->pq, fq);  
@@ -95,16 +96,12 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
     int byte = 0;
     int count = 0;
     int nwrite = 0;
-    printf("in forward_data()\n");
-    printf("pack_cnt: %d\n", pack_cnt);
 
     for (count = 0; count < pack_cnt; count++) {
         while (byte < BLOCKSIZE) {
-            printf("before send()\n");
             printf("packet: %s\n", fq->buffer[count]);
             nwrite = send(fq->sockfd, fq->buffer[count],
                     BLOCKSIZE - byte, 0);
-            printf("nwrite: %d\n", nwrite);
             if (nwrite < 0) {
                 perror("Error in forward_data");
             } else if (nwrite > 0) {
@@ -141,7 +138,7 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
     if (ns == NULL) {
         return -1;
     }
-    pack_num = -1 * (int) ns->pri;
+    pack_num = (-1 * (int) ns->pri) - 1;
     printf("pack_num: %d\n", pack_num);
     printf("fq->sent: %d\n", fq->sent);
 
@@ -150,10 +147,9 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
         pqueue_insert(pq, ns);
         return packets;
     }else {
+        printf("* ns->raw_packet: %s\n", ns->raw_packet);
         fq->buffer[packets] = (char*) ns->raw_packet;
-        printf("-- adding --\n");
         packets += 1;
-        printf("-- after adding --\n");
         while (flag == true) {
             ns = (node_t *) malloc(sizeof(node_t));
             ns = (node_t *) pqueue_pop(pq);
@@ -162,22 +158,19 @@ static int fill_queue(pqueue_t *pq, fqueue_t *fq)
                 fq->buffer = (char **) realloc(fq->buffer,
                         fq->byte_capacity);
             }
-            printf("before pack_num\n");
             if (ns != NULL) {
-                pack_num = -1 * ns->pri;
+                pack_num = (-1 * ns->pri) + 1;
                 printf("*pack_num*: %d\n", pack_num);
                 if ( pack_num == fq->sent + packets + 1) {
-                    printf("-- adding --\n");
-                    printf("ns->raw_packet: %s\n", ns->raw_packet);
                     fq->buffer[packets] = (char*) ns->raw_packet;
-                    printf("fq->buffer[packets]: %s\n", fq->buffer[packets]);
                     packets += 1;
                     fq->byte_count += (int) sizeof(ns->raw_packet);
-                    printf("fq->byte_count: %d\n", fq->byte_count);
                 } else {
                     printf("-- no more add --\n");
+                    printf("pack_num: %d\n", pack_num);
+                    printf("fq->sent: %d\n", fq->sent);
+                    printf("packets: %d\n", packets);
                     pqueue_insert(pq, ns);
-                    printf("-- blah --\n");
                     flag = false;
                 }
             } else{

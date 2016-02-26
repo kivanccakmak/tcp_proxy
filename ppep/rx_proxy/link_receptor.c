@@ -25,8 +25,8 @@ void *rx_chain(void *args)
     unsigned char *raw_buf = 
         (unsigned char*) malloc(PACKET_SIZE);
     struct pollfd pfd;
-    pool_t *pl = (pool_t *) malloc(sizeof(pool_t));
     pthread_t id = pthread_self();
+    pool_t *pl = (pool_t *) malloc(sizeof(pool_t));
 
     // get struct pointers at thread initialization 
     rx_args_t *rx_args = (rx_args_t *) args;
@@ -41,18 +41,14 @@ void *rx_chain(void *args)
         // wait socket file descriptor to get packet
         printf("receptor waits to be polled \n");
         rv = poll(&pfd, 1, rx_args->poll_timeout); 
-
         while (recv_count < PACKET_SIZE){
-            numbytes = recv(sockfd, raw_buf+recv_count, 1, 0);
+            numbytes = recv(sockfd, raw_buf+recv_count,
+                    PACKET_SIZE, 0);
+            printf("numbytes: %d\n", numbytes);
             if (numbytes > 0) {
                 recv_count += numbytes;
-            }
-            if (numbytes == -1) {
-                perror("bug\n");
-                break;
-            } else if (numbytes == 0) {
-                pthread_exit(&id);
-                return NULL;
+            } else {
+                goto COMPLETE;
             }
         }
         add2queue(pl, raw_buf);
@@ -60,6 +56,16 @@ void *rx_chain(void *args)
         raw_buf = (unsigned char*) malloc(PACKET_SIZE);
 	recv_count = 0;
     }
+COMPLETE:
+    printf("** last packet **\n");
+    printf("********************\n");
+    printf("********************\n");
+    printf("********************\n");
+    if ((int) sizeof(raw_buf) > 0) {
+        printf("bigger > 0\n");
+        add2queue(pl, raw_buf);
+    }
+    pthread_exit(&id);
     return NULL;
 }
 
@@ -83,7 +89,9 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 
     printf("packet->raw_packet: %s\n", packet->raw_packet);
     printf("packet->seq: %d\n", packet->seq);
-    ns->pri = -1 * packet->seq;
+    printf("sizeof(packet->raw_packet): %d\n",
+            (int) sizeof(packet->raw_packet));
+    ns->pri = (-1 * packet->seq) - 1; 
     ns->raw_packet = packet->raw_packet;
     
     // now lock queue and insert data
@@ -91,7 +99,6 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 
     pqueue_insert(pl->pq, ns);
     if (pl->sent_min_seq + 1 == packet->seq) {
-        printf("nudge  =  true\n");
         nudge = true;
     } else
         nudge = false;
@@ -102,10 +109,10 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     // if expected seq_number arrived, nudge
     // forward module
     if (nudge == true) {
-        printf("*sending cond_signal* \n");
+        /*printf("*sending cond_signal* \n");*/
         pthread_mutex_unlock(&pl->lock);
         pthread_cond_signal(&pl->cond);
-        printf("*after sending cond_signal*\n");
+        /*printf("*after sending cond_signal*\n");*/
     }else {
         pthread_mutex_unlock(&pl->lock);
     }
