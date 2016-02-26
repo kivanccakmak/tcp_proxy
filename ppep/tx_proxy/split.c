@@ -234,8 +234,8 @@ static void set_link(char *dest_ip, char *dest_port,
             sizeof(server));
     printf("***\n");
     printf("conn_res: %d\n", conn_res);
-    if (conn_res > 0) {
-        perror("connection failed. Error");
+    if (conn_res < 0) {
+        perror("connection for tx_chain failed. Error");
         exit(0);
     } else {
         tcp_link->fd = sockfd;
