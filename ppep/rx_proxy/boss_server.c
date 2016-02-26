@@ -31,11 +31,11 @@ int main(int argc, char * argv[])
     pl = pool_init();
 
     que_args->pl = pl;
-    queue_args->dest_ip = dest_ip;
-    queue_args->dest_port = dest_port;
-    que_args->fq = fq;
+    que_args->dest_ip = dest_ip;
+    que_args->dest_port = dest_port;
     
     wait2forward(que_args);
+    sleep(3);
     
     printf("to server listen\n");
     server_listen(rcv_sock, pl);
