@@ -10,7 +10,7 @@
 /**
  * @brief number of bytes in raw_tcp data
  */
-#define BLOCKSIZE 20 
+#define BLOCKSIZE 1000 
 
 /**
  * @brief number of connections that 

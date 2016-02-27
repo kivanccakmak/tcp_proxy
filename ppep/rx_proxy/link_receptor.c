@@ -32,19 +32,13 @@ void *rx_chain(void *args)
     rx_args_t *rx_args = (rx_args_t *) args;
     pl = rx_args->pl;
     sockfd = rx_args->sockfd;
-
     pfd.fd = sockfd;
     pfd.events = POLLIN;
-    
-    printf("** in link_receptor() **\n");
     while (1) {
-        // wait socket file descriptor to get packet
-        /*printf("receptor waits to be polled \n");*/
         rv = poll(&pfd, 1, rx_args->poll_timeout); 
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count,
                     PACKET_SIZE, 0);
-            /*printf("numbytes: %d\n", numbytes);*/
             if (numbytes > 0) {
                 recv_count += numbytes;
             } else {
@@ -57,10 +51,6 @@ void *rx_chain(void *args)
 	recv_count = 0;
     }
 COMPLETE:
-    printf("** last packet **\n");
-    printf("********************\n");
-    printf("********************\n");
-    printf("********************\n");
     if ((int) sizeof(raw_buf) > 0) {
         printf("bigger > 0\n");
         add2queue(pl, raw_buf);
@@ -80,24 +70,17 @@ COMPLETE:
  */
 static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
-    /*printf("in add2queue\n");*/
     bool delay = false;
     encaps_packet_t *packet;
     packet = (encaps_packet_t *) raw_packet;
-
     bool nudge = false;
     node_t *ns = (node_t *) malloc(sizeof(node_t));
 
-    /*printf("packet->raw_packet: %s\n", packet->raw_packet);*/
-    /*printf("packet->seq: %d\n", packet->seq);*/
-    /*printf("sizeof(packet->raw_packet): %d\n",*/
-            /*(int) sizeof(packet->raw_packet));*/
     ns->pri = (-1 * packet->seq) - 1; 
     ns->raw_packet = packet->raw_packet;
     
     // now lock queue and insert data
     pthread_mutex_lock(&pl->lock);
-
     pqueue_insert(pl->pq, ns);
     if (pl->sent_min_seq + 1 == packet->seq) {
         nudge = true;
@@ -111,12 +94,9 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
         delay = true;
 
     // if expected seq_number arrived, nudge
-    // forward module
     if (nudge == true) {
-        /*printf("*sending cond_signal* \n");*/
         pthread_mutex_unlock(&pl->lock);
         pthread_cond_signal(&pl->cond);
-        /*printf("*after sending cond_signal*\n");*/
     }else {
         pthread_mutex_unlock(&pl->lock);
     }

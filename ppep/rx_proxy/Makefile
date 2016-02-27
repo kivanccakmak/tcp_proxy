@@ -7,7 +7,7 @@ LIBS = -lpthread -lm
 VALGRIND = valgrind
 
 SERV_PORT = 6000
-DEST_IP = 127.0.0.1 
+DEST_IP = 192.168.3.165 
 DEST_PORT = 5050
 
 TARGET = proxy_rx
