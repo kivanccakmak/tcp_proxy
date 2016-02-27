@@ -10,13 +10,15 @@
 /**
  * @brief number of bytes in raw_tcp data
  */
-#define BLOCKSIZE 6
+#define BLOCKSIZE 20 
 
 /**
  * @brief number of connections that 
  * receiver side of proxy allows
  */
 #define BACKLOG 10
+
+#define DELAY_LIM 50
 
 /**
  * @brief

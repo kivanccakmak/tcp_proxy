@@ -14,7 +14,6 @@ int main(int argc, char * argv[])
     }
 
     char *dest_ip, *dest_port, *server_port;
-    int fwd_sock;
     pool_t *pl;
     queue_args_t *que_args;
     pthread_t que_id, serv_id;
@@ -54,7 +53,6 @@ pool_t* pool_init()
 {
     pqueue_t *pq;
     pool_t *pl;
-    struct timespec to;
     pthread_condattr_t attr;
 
     // initialize priority queue

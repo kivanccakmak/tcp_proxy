@@ -187,12 +187,9 @@ static void *tx_chain(void *args)
             pthread_mutex_unlock(&buff->lock);
             count = 0;
             while (count < (int) PACKET_SIZE) {
-                printf("sending ...\n");
-                printf("%s\n", packet.raw_packet);
                 send_res = send(fd, 
                     &((unsigned char*) &packet)[count],
                         PACKET_SIZE-count, 0);
-                printf("send_res: %d\n", send_res);
                 if (send_res > 0) {
                     count += send_res;
                 } else{
@@ -477,7 +474,6 @@ LOOP:
                     & (exit_flag == false)) {
                 numbytes = recv(split_sock, raw_buf+recv_count,
                         BLOCKSIZE-recv_count, 0);
-                printf("numbytes: %d\n", numbytes);
                 if (numbytes > 0)
                     recv_count += numbytes;
                 else
@@ -485,16 +481,12 @@ LOOP:
             }
             if (recv_count < BLOCKSIZE && recv_count > 0) {
                 int count = 0;
-                printf("**sizeof(raw_buf): %d\n", (int) sizeof(raw_buf));
                 for (count = recv_count; count < BLOCKSIZE; count++) {
                     raw_buf[count] = '\0';
                 }
             }
-            printf("raw_buf: %s\n", raw_buf);
             i++;
             if (recv_count > 0) {
-                printf("add2buf\n");
-                printf("sizeof(raw_buf): %d\n", (int) sizeof(raw_buf));
                 add2buff(buff, raw_buf);
             }
             raw_buf = (char *) malloc(BLOCKSIZE);
@@ -520,13 +512,13 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
     int remained = 0;
     int i = 0;
     int pre_count = 0;
+    bool delay = false;
 
     pthread_mutex_lock(&buff->lock);
 
     remained = buff->capacity - buff->set_ind;
     extend = (remained) < (2 * (int) sizeof(char*));
     if (extend) {
-        printf("in extend()\n");
         pre_count = buff->capacity;
         buff->capacity = buff->capacity * 2;
         buff->buffer = (char **) realloc(buff->buffer,
@@ -537,6 +529,8 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
         }
 
     }
+    if (buff->set_ind - buff->get_ind > DELAY_LIM)
+        delay = true;
     buff->set_ind++;
     /*printf("===            === \n");*/
     buff->buffer[buff->set_ind] = raw_buf;
@@ -545,6 +539,8 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
     /*printf("===            === \n");*/
     buff->rx_byte += BLOCKSIZE;
     pthread_mutex_unlock(&buff->lock);
+    if (delay)
+        sleep(1);
 }
 
 /**

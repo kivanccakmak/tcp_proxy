@@ -39,12 +39,12 @@ void *rx_chain(void *args)
     printf("** in link_receptor() **\n");
     while (1) {
         // wait socket file descriptor to get packet
-        printf("receptor waits to be polled \n");
+        /*printf("receptor waits to be polled \n");*/
         rv = poll(&pfd, 1, rx_args->poll_timeout); 
         while (recv_count < PACKET_SIZE){
             numbytes = recv(sockfd, raw_buf+recv_count,
                     PACKET_SIZE, 0);
-            printf("numbytes: %d\n", numbytes);
+            /*printf("numbytes: %d\n", numbytes);*/
             if (numbytes > 0) {
                 recv_count += numbytes;
             } else {
@@ -80,17 +80,18 @@ COMPLETE:
  */
 static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
-    printf("in add2queue\n");
+    /*printf("in add2queue\n");*/
+    bool delay = false;
     encaps_packet_t *packet;
     packet = (encaps_packet_t *) raw_packet;
 
     bool nudge = false;
     node_t *ns = (node_t *) malloc(sizeof(node_t));
 
-    printf("packet->raw_packet: %s\n", packet->raw_packet);
-    printf("packet->seq: %d\n", packet->seq);
-    printf("sizeof(packet->raw_packet): %d\n",
-            (int) sizeof(packet->raw_packet));
+    /*printf("packet->raw_packet: %s\n", packet->raw_packet);*/
+    /*printf("packet->seq: %d\n", packet->seq);*/
+    /*printf("sizeof(packet->raw_packet): %d\n",*/
+            /*(int) sizeof(packet->raw_packet));*/
     ns->pri = (-1 * packet->seq) - 1; 
     ns->raw_packet = packet->raw_packet;
     
@@ -106,6 +107,9 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     if (pl->avail_min_seq + 1 == packet->seq)
         pl->avail_min_seq += 1;
 
+    if (packet->seq - pl->avail_min_seq > DELAY_LIM)
+        delay = true;
+
     // if expected seq_number arrived, nudge
     // forward module
     if (nudge == true) {
@@ -116,4 +120,6 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     }else {
         pthread_mutex_unlock(&pl->lock);
     }
+    if (delay)
+        sleep(1);
 }
