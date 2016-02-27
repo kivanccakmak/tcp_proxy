@@ -1,0 +1,29 @@
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+REDIRECT   tcp  --  anywhere             192.168.3.165        tcp dpt:mmcc redir ports 5000
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+REDIRECT   tcp  --  anywhere             192.168.3.165        tcp dpt:mmcc redir ports 5000
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+NFQUEUE    tcp  --  anywhere             192.168.3.165        tcp flags:FIN,SYN,RST,ACK/SYN NFQUEUE num 0
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
