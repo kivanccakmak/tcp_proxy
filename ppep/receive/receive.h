@@ -11,8 +11,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <stdbool.h>
 #include "../network/network.h"
 
 void get_packets(char *port, FILE *fp); 
+int sock_init(char *port);
 
 #endif

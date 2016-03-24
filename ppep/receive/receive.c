@@ -3,7 +3,6 @@
 #ifdef RECV
 int main(int argc, char *argv[]) 
 {
-
     if (argc != 3) {
         printf("Wrong usage\n");
         printf("%s port_number output_file\n", argv[0]);
@@ -23,23 +22,18 @@ int main(int argc, char *argv[])
 }
 #endif
 
-
 /**
- * @brief 
+ * @brief sets socket file descriptor
+ * to receive stream
  *
  * @param[in] port
- * @param[in] fp
  */
-void get_packets(char *port, FILE *fp) 
-{ 
+int sock_init(char *port)
+{
     int sockfd, rs_addr;
-    int yes = 1, n = 1, i = 0;
-    int recv_count = 0;
-    int set_val, bind_val, listen_val;
-    struct sockaddr_storage their_addr;
+    int yes = 1;
+    
     struct addrinfo hints, *addr;
-    socklen_t sin_size;
-    char buffer[BLOCKSIZE];
 
     addr = (struct addrinfo*) 
         malloc(sizeof(struct addrinfo*));
@@ -55,49 +49,75 @@ void get_packets(char *port, FILE *fp)
         fprintf(stderr,
                 "getaddrinfo: %s\n", gai_strerror(rs_addr));
     }
-
     sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
-    set_val = setsockopt(sockfd, SOL_SOCKET,
-            SO_REUSEADDR, &yes, sizeof(int));
-    bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
 
-    if (bind_val == -1) {
+    if (setsockopt(sockfd, SOL_SOCKET, 
+                SO_REUSEADDR, &yes, sizeof(int)) != 0) {
+        perror("setsockopt: ");
+        exit(1);
+    }
+
+    if (bind(sockfd, addr->ai_addr, addr->ai_addrlen) == -1) {
         close(sockfd);
         perror("server: bind");
+        exit(1);
     }
+
     if (addr == NULL) {
         fprintf(stderr, "server: failed to bind\n");
         exit(1);
     }
+    return sockfd;
+}
+
+/**
+ * @brief receive packets and
+ * records them into file
+ *
+ * @param[in] port
+ * @param[in] fp
+ */
+void get_packets(char *port, FILE *fp) 
+{ 
+    int n = 0, i = 0, recv_count = 0;
+    char buffer[BLOCKSIZE];
+    struct sockaddr_storage their_addr;
+    socklen_t sin_size;
+    bool recv_flag = true;
 
     sin_size = sizeof(their_addr);
+    int sockfd = sock_init(port);
+
     printf("end destination listens \n");
-    listen_val = listen(sockfd, 1);
+    if (listen(sockfd, 1) != 0) {
+        perror("listen: ");
+        exit(1);
+    }
 
     printf("end destination waits connection \n");
     sockfd = accept(sockfd, 
             (struct sockaddr*)&their_addr, &sin_size);
     printf("end destination accepted connection \n");
-
-    while (n > 0) {
+    
+    // receive until connection colsed
+    while (recv_flag) {
         memset(buffer, '\0', sizeof(buffer) - 1);
-        while (recv_count < BLOCKSIZE) {
+        while (recv_count < BLOCKSIZE && recv_flag) {
             n = recv(sockfd, buffer+recv_count, 
                     BLOCKSIZE-recv_count, 0);
             if (n > 0) {
                 recv_count += n;
             } else {
-                break;
+                recv_flag = false;
             }
-        }
-        if (n < 1) {
-            break;
         }
         recv_count = 0;
         fprintf(fp, "%s", buffer);
         fflush(fp);
     }
+
+    // to record remained residue
     if (recv_count > 0) {
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
