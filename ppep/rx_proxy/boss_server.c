@@ -90,9 +90,7 @@ pool_t* pool_init()
 void server_listen(char* server_port, pool_t *pl)
 {
     int sockfd, newfd;
-    int rs_addr;
-    int bind_val, set_val, yes = 1;
-    int listen_val, thr_val;
+    int rs_addr, yes = 1, thr_val;
     char tx_ip[INET6_ADDRSTRLEN];
     uint32_t tx_port;
     struct sigaction sig_sa;
@@ -122,14 +120,15 @@ void server_listen(char* server_port, pool_t *pl)
         exit(0);
     }
 
-    set_val = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-            sizeof(int));
-    bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
-    if (bind_val == -1) {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
+                sizeof(int)) != 0) {
+        perror("setsockopt: ");
+        exit(0);
+    }
+
+    if (bind(sockfd, addr->ai_addr, addr->ai_addrlen) == -1) {
         perror("server: bind");
         exit(0);
-    } else{
-        printf("socket binded\n");
     }
 
     if (addr == NULL) {
@@ -138,10 +137,9 @@ void server_listen(char* server_port, pool_t *pl)
     }
     
     printf("-listen()\n");
-    listen_val = listen(sockfd, BACKLOG);
-    if (listen_val == -1){
-        perror("listen");
-        exit(1);
+    if (listen(sockfd, BACKLOG) == -1) {
+        perror("listen: ");
+        exit(0);
     }
 
     // initialize sigaction to wait connections
