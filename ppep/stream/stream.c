@@ -4,7 +4,8 @@ static void stream(char *ip_addr, char *port,
         FILE *fp);
 
 #ifdef STREAM
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     if (argc != 4) {
         printf("Wrong Usage\n");
         printf("%s dest_ip dest_port file_name\n", argv[0]);
