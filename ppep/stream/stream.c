@@ -50,6 +50,7 @@ static void stream(char *ip_addr, char *port, FILE *fp)
     printf("connecting ...\n");
     conn_res = connect(sockfd, (struct sockaddr*)&server,
             sizeof(server));
+    printf("conn_res: %d\n", conn_res);
     if (conn_res < 0) {
         perror("connection failed. Error");
     }
