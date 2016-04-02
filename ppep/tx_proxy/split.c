@@ -159,7 +159,8 @@ static void *tx_chain(void *args)
     encaps_packet_t packet;
     struct link *tx_link = NULL;
     proxy_buff *buff;
-    int diff = 0, ind = 0, count = 0, send_res = 0;
+    int diff = 0, ind = 0, sent_count = 0, 
+        numbytes = 0, total = 0;
     int fd;
     pthread_t id = pthread_self();
 
@@ -181,13 +182,19 @@ static void *tx_chain(void *args)
             packet.seq = (unsigned short) buff->get_ind;
             buff->get_ind++;
             pthread_mutex_unlock(&buff->lock);
-            count = 0;
-            while (count < (int) PACKET_SIZE) {
-                send_res = send(fd, 
-                    &((unsigned char*) &packet)[count],
-                        PACKET_SIZE-count, 0);
-                if (send_res > 0)
-                    count += send_res;
+            sent_count = 0;
+            printf("sending data ...\n");
+            while (sent_count < (int) PACKET_SIZE) {
+                numbytes = send(fd, 
+                    &((unsigned char*) &packet)[sent_count],
+                        PACKET_SIZE-sent_count, 0);
+                printf("num_sent: %d\n", numbytes);
+                if (numbytes > 0) {
+                    sent_count += numbytes;
+                    total += numbytes;
+                }
+                printf("total_sent: %d\n", total);
+                printf("msg: %s\n", packet.raw_packet);
             }
         } else {
             pthread_mutex_unlock(&buff->lock);
@@ -452,7 +459,7 @@ static void split_loop(int sockfd, proxy_buff *buff)
     sin_size = sizeof(their_addr);
     char src_ip[INET6_ADDRSTRLEN];
     uint32_t src_port;
-    char *raw_buf = (char*) malloc(BLOCKSIZE);
+    char *raw_buf = NULL;
 
     listen_val = listen(sockfd, 1);
     sockfd = accept(sockfd, 
@@ -476,6 +483,7 @@ static void split_loop(int sockfd, proxy_buff *buff)
             }
             if (pfd.revents == POLLIN) {
                 printf("in POLLIN\n");
+                raw_buf = (char *) malloc(BLOCKSIZE);
                 while (recv_count < (int) BLOCKSIZE) {
                     numbytes = recv(sockfd, raw_buf+recv_count, 
                             BLOCKSIZE-recv_count, 0);
@@ -483,9 +491,13 @@ static void split_loop(int sockfd, proxy_buff *buff)
                     if (numbytes > 0) {
                         recv_count += numbytes;
                         total += numbytes;
-                    }
-                     else if(numbytes == 0)
+                    } else if(numbytes == 0){
                         goto CONN_CLOSE;
+                    }
+                    printf("total: %d\n", total);
+                }
+                if (recv_count > 0) {
+                    add2buff(buff, raw_buf, recv_count);
                 }
            }
         } 
@@ -511,8 +523,9 @@ static void add2buff(proxy_buff *buff, char *raw_buf,
         int recv_count) 
 {
     bool extend = false;
-    int remained = 0, i = 0, pre_count = 0, diff = 0;
+    int remained = 0, i = 0, pre_count = 0;
 
+    // fill remaining as NULL, if residue
     if (recv_count > 0 && recv_count < BLOCKSIZE) {
         int count = 0;
         for (count = recv_count; count < BLOCKSIZE; count++){
@@ -521,6 +534,8 @@ static void add2buff(proxy_buff *buff, char *raw_buf,
     }
 
     pthread_mutex_lock(&buff->lock);
+
+    // check capacity overflow
     remained = buff->capacity - buff->set_ind;
     extend = (remained) < (2 * (int) sizeof(char*));
     if (extend) {
@@ -534,15 +549,11 @@ static void add2buff(proxy_buff *buff, char *raw_buf,
         }
 
     }
-
     buff->set_ind++;
     buff->buffer[buff->set_ind] = raw_buf;
     buff->rx_byte += BLOCKSIZE;
-    diff = buff->set_ind - buff->get_ind;
+
     pthread_mutex_unlock(&buff->lock);
-    if (diff > 2) {
-        sleep(1);
-    }
 }
 
 /**
