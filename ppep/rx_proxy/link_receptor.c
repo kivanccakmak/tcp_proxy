@@ -34,20 +34,20 @@ void *rx_chain(void *args)
     pfd.fd = sockfd;
     pfd.events = POLLIN;
     while (true) {
-        if (poll(&pfd, 1, rx_args->poll_timeout) > 0) {
+        if (poll(&pfd, 1, 1) > 0) {
             recv_count = 0;
             numbytes = 0;
             raw_buf = (unsigned char*) malloc(PACKET_SIZE);
             while (recv_count < PACKET_SIZE){
                 numbytes = recv(sockfd, raw_buf+recv_count,
-                        PACKET_SIZE, 0);
+                        PACKET_SIZE-recv_count, 0);
+                printf("numbytes: %d\n", numbytes);
                 if (numbytes > 0) {
                     recv_count += numbytes;
                 } else if (numbytes == 0) {
                     goto COMPLETE;
                 }
             }
-            printf("recv_count: %ld\n", recv_count);
             add2queue(pl, raw_buf);
         }
     }
