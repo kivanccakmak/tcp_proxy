@@ -37,6 +37,8 @@
 
 #include <pthread.h>
 
+#define PRI_CONVERT(x) ((-1 * x) - 1)
+
 /**
  * @brief node in queue
  */

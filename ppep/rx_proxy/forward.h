@@ -23,6 +23,8 @@
 #define SLEEP 0
 #define SEND 1
 
+#define WAIT_TIME 2
+
 /**
  * @brief enabled by boss_server
  * module, queue module waits nudge from

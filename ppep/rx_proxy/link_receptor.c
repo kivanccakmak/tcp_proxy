@@ -76,7 +76,7 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
 
     node_t *ns = (node_t *) malloc(sizeof(node_t));
 
-    ns->pri = (-1 * packet->seq) - 1; 
+    ns->pri = packet->seq; 
     ns->raw_packet = packet->raw_packet;
     printf("packet->seq: %d\n", (int) packet->seq);
     
