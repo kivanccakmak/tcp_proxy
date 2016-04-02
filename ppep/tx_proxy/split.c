@@ -177,7 +177,6 @@ static void *tx_chain(void *args)
             ind = buff->get_ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
             packet.seq = (unsigned short) buff->get_ind;
-            printf("packet.seq: %d\n", (int) packet.seq);
             buff->get_ind++;
             pthread_mutex_unlock(&buff->lock);
             sent_count = 0;
@@ -185,7 +184,6 @@ static void *tx_chain(void *args)
                 numbytes = send(sockfd, 
                     &((unsigned char*) &packet)[sent_count],
                         (size_t) PACKET_SIZE-sent_count, 0);
-                printf("numbytes: %d\n", numbytes);
                 if (numbytes > 0) {
                     sent_count += numbytes;
                     total += numbytes;
@@ -194,7 +192,7 @@ static void *tx_chain(void *args)
             }
         } else {
             pthread_mutex_unlock(&buff->lock);
-            sleep(3);
+            sleep(1);
         }  
         pthread_mutex_lock(&tx_link->lock);
         if (tx_link->state == PASSIVE) {
@@ -221,7 +219,6 @@ static void set_link(char *dest_ip, char *dest_port,
 {
     struct sockaddr_in server;
     int sockfd;
-    int conn_res = 0, get_res = 0;
     socklen_t len = sizeof(server);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -231,26 +228,23 @@ static void set_link(char *dest_ip, char *dest_port,
     server.sin_port = htons(atoi(dest_port));
 
     printf("tcp link connecting ...\n");
-    conn_res = connect(sockfd, (struct sockaddr*)&server,
-            sizeof(server));
-    printf("***\n");
-    printf("conn_res: %d\n", conn_res);
-    if (conn_res > 0) {
+    if (connect(sockfd, (struct sockaddr*)&server,
+                sizeof(server)) > 0) {
         perror("connection failed. Error");
         exit(0);
-    } else {
+    }else {
         tcp_link->fd = sockfd;
     }
 
     printf("connected ... \n");
-    get_res = 
-        getsockname(sockfd, (struct sockaddr *)&server, &len);
-    if (get_res == -1) {
+    if (getsockname(sockfd, (struct sockaddr*)&server,
+                &len) == -1) {
         perror("getsockname");
         exit(0);
-    } else {
+    }else {
         tcp_link->src_port = ntohs(server.sin_port);
     }
+
     tcp_link->state = ACTIVE;
     pthread_mutex_init(&tcp_link->lock, NULL);
     pthread_cond_init(&tcp_link->cond, NULL);
@@ -492,7 +486,7 @@ static void split_loop(int sockfd, proxy_buff *buff)
                 if (recv_count > 0) {
                     diff = add2buff(buff, raw_buf, recv_count);
                     if (diff > WAIT_LIMIT)
-                        sleep(3);
+                        sleep(1);
                 }
            }
         } 
@@ -504,7 +498,6 @@ CONN_CLOSE:
     }
     printf("total: %d\n", total);
     printf("no more payload interception!\n");
-    sleep(5);
 }
 
 /**
