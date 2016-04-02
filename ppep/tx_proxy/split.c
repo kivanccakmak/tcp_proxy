@@ -101,8 +101,7 @@ int main(int argc, char *argv[])
  */
 static void *run_controller(void *args)
 {
-    int i = 0;
-    int thr_res = 0;
+    int i = 0, thr_res = 0;
     struct cb_cntrl_args *cntrl_args = NULL;
     struct link **tcp_links = NULL;
     struct link *temp_link = NULL;
@@ -175,6 +174,7 @@ static void *tx_chain(void *args)
     while (1) {
         pthread_mutex_lock(&buff->lock);
         diff = buff->set_ind - buff->get_ind;
+        printf("diff: %d\n", diff);
         if (diff >= 0){ 
             ind = buff->get_ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
@@ -442,16 +442,16 @@ static void *get_payload(void *args)
  * @param buff buffer of transmit proxy,
  * to sync with forwarder threads.
  */
-static void split_loop(int sockfd, proxy_buff *buff) {
-    int listen_val, rv, 
-        recv_count = 0, numbytes = 0, i = 0;
+static void split_loop(int sockfd, proxy_buff *buff) 
+{
+    int listen_val, recv_count = 0, numbytes = 0;
+    int total = 0;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
     socklen_t sin_size;
     sin_size = sizeof(their_addr);
     char src_ip[INET6_ADDRSTRLEN];
     uint32_t src_port;
-    bool exit = false;
     char *raw_buf = (char*) malloc(BLOCKSIZE);
 
     listen_val = listen(sockfd, 1);
@@ -461,34 +461,41 @@ static void split_loop(int sockfd, proxy_buff *buff) {
             get_in_ipaddr((struct sockaddr*)&their_addr),
             src_ip, sizeof(src_ip));
     src_port = get_in_portnum((struct sockaddr*)&their_addr);
-    printf("connection established with %s:%d",
+    printf("connection established with %s:%d\n",
             src_ip, (int) src_port);
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
-    while (1) {
-        while (exit == false) {
-            rv = poll(&pfd, 1, -1);
+    while (true) {
+        if (poll(&pfd, 1, 100) > 0) {
             recv_count = 0;
-            while ((recv_count < (int) BLOCKSIZE) 
-                    & (exit == false)) {
-                numbytes = recv(sockfd, raw_buf+recv_count,
-                        BLOCKSIZE-recv_count, 0);
-                if (numbytes > 0)
-                    recv_count += numbytes;
-                else
-                    exit = true;
+            printf("pfd.revents: %d\n", pfd.revents);
+            if (pfd.revents == POLLERR){
+                perror("perr: ");
+                goto CONN_CLOSE;
             }
-            if (recv_count > 0) {
-                add2buff(buff, raw_buf, recv_count);
-            }
-            i++;
-            if (sockfd) {
-                close(sockfd);
-            }
-            raw_buf = (char *) malloc(BLOCKSIZE);
-        }
+            if (pfd.revents == POLLIN) {
+                printf("in POLLIN\n");
+                while (recv_count < (int) BLOCKSIZE) {
+                    numbytes = recv(sockfd, raw_buf+recv_count, 
+                            BLOCKSIZE-recv_count, 0);
+                    printf("numbytes: %d\n", numbytes);
+                    if (numbytes > 0) {
+                        recv_count += numbytes;
+                        total += numbytes;
+                    }
+                     else if(numbytes == 0)
+                        goto CONN_CLOSE;
+                }
+           }
+        } 
     }
+CONN_CLOSE:
+    printf("in conn close\n");
+    if (recv_count > 0) {
+        add2buff(buff, raw_buf, recv_count);
+    }
+    printf("total: %d\n", total);
 }
 
 /**
