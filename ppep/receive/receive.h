@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <stdbool.h>
+#include <poll.h>
 #include "../network/network.h"
 
 void get_packets(char *port, FILE *fp); 

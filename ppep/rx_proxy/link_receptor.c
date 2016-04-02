@@ -19,11 +19,9 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet);
  */
 void *rx_chain(void *args)
 {
-    int rv, numbytes = 0;
-    int sockfd;
+    int sockfd, numbytes = 0;
     unsigned long recv_count = 0;
-    unsigned char *raw_buf = 
-        (unsigned char*) malloc(PACKET_SIZE);
+    unsigned char *raw_buf = NULL; 
     struct pollfd pfd;
     pthread_t id = pthread_self();
     pool_t *pl = (pool_t *) malloc(sizeof(pool_t));
@@ -34,21 +32,23 @@ void *rx_chain(void *args)
     sockfd = rx_args->sockfd;
     pfd.fd = sockfd;
     pfd.events = POLLIN;
-    while (1) {
-        rv = poll(&pfd, 1, rx_args->poll_timeout); 
-        while (recv_count < PACKET_SIZE){
-            numbytes = recv(sockfd, raw_buf+recv_count,
-                    PACKET_SIZE, 0);
-            if (numbytes > 0) {
-                recv_count += numbytes;
-            } else {
-                goto COMPLETE;
+    while (true) {
+        if (poll(&pfd, 1, rx_args->poll_timeout) > 0) {
+            recv_count = 0;
+            numbytes = 0;
+            raw_buf = (unsigned char*) malloc(PACKET_SIZE);
+            while (recv_count < PACKET_SIZE){
+                numbytes = recv(sockfd, raw_buf+recv_count,
+                        PACKET_SIZE, 0);
+                if (numbytes > 0) {
+                    recv_count += numbytes;
+                } else if (numbytes == 0) {
+                    goto COMPLETE;
+                }
             }
         }
+        printf("recv_count: %ld\n", recv_count);
         add2queue(pl, raw_buf);
-        *(raw_buf + recv_count + 1) = '\0';
-        raw_buf = (unsigned char*) malloc(PACKET_SIZE);
-	recv_count = 0;
     }
 COMPLETE:
     if ((int) sizeof(raw_buf) > 0) {
@@ -82,9 +82,9 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     // now lock queue and insert data
     pthread_mutex_lock(&pl->lock);
     pqueue_insert(pl->pq, ns);
-    if (pl->sent_min_seq + 1 == packet->seq) {
+    if (pl->sent_min_seq + 1 == packet->seq) 
         nudge = true;
-    } else
+    else
         nudge = false;
 
     if (pl->avail_min_seq + 1 == packet->seq)
@@ -93,7 +93,6 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     if (packet->seq - pl->avail_min_seq > DELAY_LIM)
         delay = true;
 
-    // if expected seq_number arrived, nudge
     if (nudge == true) {
         pthread_mutex_unlock(&pl->lock);
         pthread_cond_signal(&pl->cond);

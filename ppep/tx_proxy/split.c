@@ -15,7 +15,7 @@ static struct listen_args* set_listen_args(
 
 static int set_tx_sock(char *dest_ip, char *dest_port); 
 
-static void add2buff(proxy_buff *buff, char *raw_buf, int recv_count); 
+static int add2buff(proxy_buff *buff, char *raw_buf, int recv_count); 
 
 static struct split_args* set_split_args(char *local_port);
 
@@ -444,6 +444,7 @@ static void *get_payload(void *args)
 
 /**
  * @brief 
+ * printf("no more payload interception!\n");
  *
  * @param sockfd to get data from nfqueue.
  * @param buff buffer of transmit proxy,
@@ -452,7 +453,7 @@ static void *get_payload(void *args)
 static void split_loop(int sockfd, proxy_buff *buff) 
 {
     int listen_val, recv_count = 0, numbytes = 0;
-    int total = 0;
+    int total = 0, diff = 0;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
     socklen_t sin_size;
@@ -497,7 +498,9 @@ static void split_loop(int sockfd, proxy_buff *buff)
                     printf("total: %d\n", total);
                 }
                 if (recv_count > 0) {
-                    add2buff(buff, raw_buf, recv_count);
+                    diff = add2buff(buff, raw_buf, recv_count);
+                    if (diff > WAIT_LIMIT)
+                        sleep(1);
                 }
            }
         } 
@@ -505,9 +508,10 @@ static void split_loop(int sockfd, proxy_buff *buff)
 CONN_CLOSE:
     printf("in conn close\n");
     if (recv_count > 0) {
-        add2buff(buff, raw_buf, recv_count);
+        diff = add2buff(buff, raw_buf, recv_count);
     }
     printf("total: %d\n", total);
+    printf("no more payload interception!\n");
 }
 
 /**
@@ -518,8 +522,10 @@ CONN_CLOSE:
  * @param[out] buff
  * @param[in] raw_buf
  * @param[in] recv_count
+ *
+ * return 
  */
-static void add2buff(proxy_buff *buff, char *raw_buf,
+static int add2buff(proxy_buff *buff, char *raw_buf,
         int recv_count) 
 {
     bool extend = false;
@@ -554,6 +560,7 @@ static void add2buff(proxy_buff *buff, char *raw_buf,
     buff->rx_byte += BLOCKSIZE;
 
     pthread_mutex_unlock(&buff->lock);
+    return buff->set_ind - buff->get_ind;
 }
 
 /**

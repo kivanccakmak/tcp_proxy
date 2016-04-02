@@ -156,4 +156,6 @@ struct cb_nfq_args{
 
 #define QUEUER_BUF_SIZE 10000
 
+#define WAIT_LIMIT 10
+
 #endif 

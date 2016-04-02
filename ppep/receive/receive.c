@@ -80,14 +80,14 @@ int sock_init(char *port)
  */
 void get_packets(char *port, FILE *fp) 
 { 
-    int n = 0, i = 0, recv_count = 0;
+    int sockfd, numbytes = 0, i = 0, recv_count = 0;
     char buffer[BLOCKSIZE];
     struct sockaddr_storage their_addr;
     socklen_t sin_size;
-    bool recv_flag = true;
+    struct pollfd pfd;
 
     sin_size = sizeof(their_addr);
-    int sockfd = sock_init(port);
+    sockfd = sock_init(port);
 
     printf("end destination listens \n");
     if (listen(sockfd, 1) != 0) {
@@ -99,25 +99,33 @@ void get_packets(char *port, FILE *fp)
     sockfd = accept(sockfd, 
             (struct sockaddr*)&their_addr, &sin_size);
     printf("end destination accepted connection \n");
+
+    pfd.fd = sockfd;
+    pfd.events = POLLIN;
     
-    // receive until connection colsed
-    while (recv_flag) {
-        memset(buffer, '\0', sizeof(buffer) - 1);
-        while (recv_count < BLOCKSIZE && recv_flag) {
-            n = recv(sockfd, buffer+recv_count, 
-                    BLOCKSIZE-recv_count, 0);
-            if (n > 0) {
-                recv_count += n;
-            } else {
-                recv_flag = false;
+    // receive until connection closed
+    while (true) {
+        if (poll(&pfd, 1, 100) > 0) {
+            recv_count = 0;
+            if (pfd.revents == POLLIN) {
+                memset(buffer, '\0', BLOCKSIZE);
+                while (recv_count < BLOCKSIZE) {
+                    numbytes = recv(sockfd, buffer+recv_count,
+                            BLOCKSIZE-recv_count, 0);
+                    if (numbytes > 0) 
+                        recv_count += numbytes;
+                    else if (numbytes == 0)
+                        goto CLOSE_CONN;
+                }
+                printf("numbytes: %d\n", numbytes);
+                if (recv_count > 0) {
+                    fprintf(fp, "%s", buffer);
+                    fflush(fp);
+                }
             }
         }
-        recv_count = 0;
-        fprintf(fp, "%s", buffer);
-        fflush(fp);
     }
-
-    // to record remained residue
+CLOSE_CONN:
     if (recv_count > 0) {
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
