@@ -31,6 +31,8 @@ static void *run_controller(void *args);
 
 static void *tx_chain(void *args); 
 
+static void split_loop(int sockfd, proxy_buff *buff);
+
 #ifdef TX_PROXY
 int main(int argc, char *argv[])
 {
@@ -370,25 +372,25 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
     pthread_exit(NULL);
 }
 
+
+/**
+ * @brief payload hijaker thread that
+ * gets data from nfqueue and puts into
+ * proxy buffer 
+ *
+ * @param args
+ *
+ * @return 
+ */
 static void *get_payload(void *args) 
 {
-    int i = 0;
-    int rs_addr, numbytes = 0, recv_count = 0;
-    int rv, yes = 1, set_val, bind_val, listen_val;
+    int yes = 1, rs_addr;
     struct addrinfo hints;
     struct addrinfo *addr = NULL;
-    struct sockaddr_storage their_addr;
-    struct pollfd pfd;
     struct split_args *split = NULL;
-    char src_ip[INET6_ADDRSTRLEN];
-    uint32_t src_port;
-    bool exit_flag = false;
     proxy_buff *buff = NULL;
     char *local_port = NULL;
-    socklen_t sin_size;
-    int split_sock;
-    char *raw_buf = (char*) malloc(BLOCKSIZE);
-    printf("in get_payload\n");
+    int sockfd;
 
     // get call back arguments
     split = (struct split_args*) 
@@ -397,80 +399,95 @@ static void *get_payload(void *args)
     split = (struct split_args*) args;
     local_port = split->local_port;
     buff = split->buff;
-
-    // set local socket file descriptor 
-    // to get data from nfqueue
+    // set local socket fd to get data from nfqueue 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    printf("hints set\n");
 
     addr = (struct addrinfo*) 
         malloc(sizeof(struct addrinfo*));
-    printf("local_port: %s\n", local_port);
     rs_addr = getaddrinfo(NULL, local_port, &hints, &addr);
 
     if (addr == NULL) {
         fprintf(stderr, "server: failed to bind \n");
         exit(1);
-    } else 
-        printf("addr set\n");
-
-    printf("initiating socket ...\n");
-    split_sock = socket(addr->ai_family, addr->ai_socktype,
+    }  
+    sockfd = socket(addr->ai_family, addr->ai_socktype,
             addr->ai_protocol);
-
-    printf("after socket() \n");
-    if (split_sock == -1) {
+    if (sockfd == -1) {
         perror("socket:");
         exit(0);
-    } else
-        printf("socket initiated\n");
-    set_val = setsockopt(split_sock, SOL_SOCKET, 
-            SO_REUSEADDR, &yes, sizeof(int));
-
-    printf("binding to server\n");
-    bind_val = bind(split_sock, addr->ai_addr, addr->ai_addrlen);
-    if (bind_val == -1) {
-        close(split_sock);
+    }
+    if (setsockopt(sockfd, SOL_SOCKET,
+                SO_REUSEADDR, &yes, sizeof(int)) != 0) {
+        perror("setsockopt: ");
+        exit(0);
+    }
+    if (bind(sockfd, addr->ai_addr, 
+                addr->ai_addrlen) == -1) {
+        close(sockfd);
         perror("server: bind");
     }
 
-    listen_val = listen(split_sock, 1);
-    sin_size = sizeof(their_addr);
+    split_loop(sockfd, buff);
+    return NULL;
+}
 
+
+/**
+ * @brief 
+ *
+ * @param sockfd to get data from nfqueue.
+ * @param buff buffer of transmit proxy,
+ * to sync with forwarder threads.
+ */
+static void split_loop(int sockfd, proxy_buff *buff) {
+    int listen_val, rv, 
+        recv_count = 0, numbytes = 0, i = 0;
+    struct sockaddr_storage their_addr;
+    struct pollfd pfd;
+    socklen_t sin_size;
+    sin_size = sizeof(their_addr);
+    char src_ip[INET6_ADDRSTRLEN];
+    uint32_t src_port;
+    bool exit = false;
+    char *raw_buf = (char*) malloc(BLOCKSIZE);
+
+    listen_val = listen(sockfd, 1);
+    sockfd = accept(sockfd, 
+            (struct sockaddr*)&their_addr, &sin_size);
+    inet_ntop(their_addr.ss_family, 
+            get_in_ipaddr((struct sockaddr*)&their_addr),
+            src_ip, sizeof(src_ip));
+    src_port = get_in_portnum((struct sockaddr*)&their_addr);
+    printf("connection established with %s:%d",
+            src_ip, (int) src_port);
+
+    pfd.fd = sockfd;
+    pfd.events = POLLIN;
     while (1) {
-        split_sock = accept(split_sock, (struct sockaddr*)&their_addr,
-                &sin_size);
-        pfd.fd = split_sock;
-        pfd.events = POLLIN;
-        inet_ntop(their_addr.ss_family,
-                get_in_ipaddr((struct sockaddr*)&their_addr),
-                src_ip, sizeof(src_ip));
-        src_port = get_in_portnum((struct sockaddr*)&their_addr);
-        while (exit_flag != true) {
+        while (exit == false) {
             rv = poll(&pfd, 1, -1);
             recv_count = 0;
             while ((recv_count < (int) BLOCKSIZE) 
-                    & (exit_flag == false)) {
-                numbytes = recv(split_sock, raw_buf+recv_count,
+                    & (exit == false)) {
+                numbytes = recv(sockfd, raw_buf+recv_count,
                         BLOCKSIZE-recv_count, 0);
                 if (numbytes > 0)
                     recv_count += numbytes;
                 else
-                    exit_flag = true;
+                    exit = true;
             }
             if (recv_count > 0) {
                 add2buff(buff, raw_buf, recv_count);
             }
             i++;
-            if (exit_flag) {
-                close(split_sock);
+            if (sockfd) {
+                close(sockfd);
             }
             raw_buf = (char *) malloc(BLOCKSIZE);
         }
-        sleep(5);
     }
 }
 
@@ -487,10 +504,7 @@ static void add2buff(proxy_buff *buff, char *raw_buf,
         int recv_count) 
 {
     bool extend = false;
-    int remained = 0;
-    int i = 0;
-    int pre_count = 0;
-    int diff = 0;
+    int remained = 0, i = 0, pre_count = 0, diff = 0;
 
     if (recv_count > 0 && recv_count < BLOCKSIZE) {
         int count = 0;
