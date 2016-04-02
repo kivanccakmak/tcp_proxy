@@ -163,7 +163,7 @@ void server_listen(char* server_port, pool_t *pl)
         rx_args = (rx_args_t *) malloc(sizeof(rx_args));
         rx_args->sockfd = newfd;
         rx_args->pl = pl;
-        rx_args->poll_timeout = -1;
+        rx_args->poll_timeout = 100;
 
         thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
                 rx_args);

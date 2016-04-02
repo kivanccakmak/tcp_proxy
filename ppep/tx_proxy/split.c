@@ -156,59 +156,56 @@ static void *run_controller(void *args)
 static void *tx_chain(void *args) 
 {
     struct cb_tx_args *tx_args = NULL;
-    encaps_packet_t packet;
     struct link *tx_link = NULL;
+    encaps_packet_t packet;
     proxy_buff *buff;
     int diff = 0, ind = 0, sent_count = 0, 
-        numbytes = 0, total = 0;
-    int fd;
-    pthread_t id = pthread_self();
+        numbytes = 0, total = 0, sockfd;
 
-    tx_args = (struct cb_tx_args*)  malloc(sizeof(struct cb_tx_args*));
+    tx_args = (struct cb_tx_args*)  malloc(sizeof(struct cb_tx_args));
     buff = (proxy_buff*) malloc(sizeof(proxy_buff));
-    tx_link = (struct link*) malloc(sizeof(struct link*));
-
+    tx_link = (struct link*) malloc(sizeof(struct link));
     tx_args = (struct cb_tx_args*) args;
     buff = tx_args->buff;
     tx_link = tx_args->tx_link;
-    fd = tx_link->fd;
-    while (1) {
+    sockfd = tx_link->fd;
+
+    while (true) {
         pthread_mutex_lock(&buff->lock);
         diff = buff->set_ind - buff->get_ind;
-        printf("diff: %d\n", diff);
         if (diff >= 0){ 
             ind = buff->get_ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
             packet.seq = (unsigned short) buff->get_ind;
+            printf("packet.seq: %d\n", (int) packet.seq);
             buff->get_ind++;
             pthread_mutex_unlock(&buff->lock);
             sent_count = 0;
-            printf("sending data ...\n");
             while (sent_count < (int) PACKET_SIZE) {
-                numbytes = send(fd, 
+                numbytes = send(sockfd, 
                     &((unsigned char*) &packet)[sent_count],
-                        PACKET_SIZE-sent_count, 0);
-                printf("num_sent: %d\n", numbytes);
+                        (size_t) PACKET_SIZE-sent_count, 0);
+                printf("numbytes: %d\n", numbytes);
                 if (numbytes > 0) {
                     sent_count += numbytes;
                     total += numbytes;
-                }
-                printf("total_sent: %d\n", total);
-                printf("msg: %s\n", packet.raw_packet);
+                } else if(numbytes == 0)
+                    goto CONN_CLOSE;
             }
         } else {
             pthread_mutex_unlock(&buff->lock);
-            sleep(1);
+            sleep(3);
         }  
         pthread_mutex_lock(&tx_link->lock);
         if (tx_link->state == PASSIVE) {
-            close(fd);
-            tx_link->state = CLOSED;
             pthread_mutex_unlock(&tx_link->lock);
-            pthread_exit(&id);
+            goto CONN_CLOSE;
         }
         pthread_mutex_unlock(&tx_link->lock);
     }
+CONN_CLOSE:
+    printf("in CONN_CLOSE\n");
+    close(sockfd);
 }
 
 /**
@@ -444,7 +441,6 @@ static void *get_payload(void *args)
 
 /**
  * @brief 
- * printf("no more payload interception!\n");
  *
  * @param sockfd to get data from nfqueue.
  * @param buff buffer of transmit proxy,
@@ -477,30 +473,26 @@ static void split_loop(int sockfd, proxy_buff *buff)
     while (true) {
         if (poll(&pfd, 1, 100) > 0) {
             recv_count = 0;
-            printf("pfd.revents: %d\n", pfd.revents);
             if (pfd.revents == POLLERR){
                 perror("perr: ");
                 goto CONN_CLOSE;
             }
             if (pfd.revents == POLLIN) {
-                printf("in POLLIN\n");
                 raw_buf = (char *) malloc(BLOCKSIZE);
                 while (recv_count < (int) BLOCKSIZE) {
                     numbytes = recv(sockfd, raw_buf+recv_count, 
                             BLOCKSIZE-recv_count, 0);
-                    printf("numbytes: %d\n", numbytes);
                     if (numbytes > 0) {
                         recv_count += numbytes;
                         total += numbytes;
                     } else if(numbytes == 0){
                         goto CONN_CLOSE;
                     }
-                    printf("total: %d\n", total);
                 }
                 if (recv_count > 0) {
                     diff = add2buff(buff, raw_buf, recv_count);
                     if (diff > WAIT_LIMIT)
-                        sleep(1);
+                        sleep(3);
                 }
            }
         } 
@@ -512,6 +504,7 @@ CONN_CLOSE:
     }
     printf("total: %d\n", total);
     printf("no more payload interception!\n");
+    sleep(5);
 }
 
 /**

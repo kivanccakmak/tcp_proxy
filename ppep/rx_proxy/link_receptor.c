@@ -30,6 +30,7 @@ void *rx_chain(void *args)
     rx_args_t *rx_args = (rx_args_t *) args;
     pl = rx_args->pl;
     sockfd = rx_args->sockfd;
+
     pfd.fd = sockfd;
     pfd.events = POLLIN;
     while (true) {
@@ -46,13 +47,12 @@ void *rx_chain(void *args)
                     goto COMPLETE;
                 }
             }
+            printf("recv_count: %ld\n", recv_count);
+            add2queue(pl, raw_buf);
         }
-        printf("recv_count: %ld\n", recv_count);
-        add2queue(pl, raw_buf);
     }
 COMPLETE:
     if ((int) sizeof(raw_buf) > 0) {
-        printf("bigger > 0\n");
         add2queue(pl, raw_buf);
     }
     pthread_exit(&id);
@@ -70,18 +70,22 @@ COMPLETE:
  */
 static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
-    bool delay = false;
-    encaps_packet_t *packet;
-    packet = (encaps_packet_t *) raw_packet;
+    int diff;
     bool nudge = false;
+    encaps_packet_t *packet = NULL;
+
+    packet = (encaps_packet_t *) raw_packet;
+
     node_t *ns = (node_t *) malloc(sizeof(node_t));
 
     ns->pri = (-1 * packet->seq) - 1; 
     ns->raw_packet = packet->raw_packet;
+    printf("packet->seq: %d\n", (int) packet->seq);
     
     // now lock queue and insert data
     pthread_mutex_lock(&pl->lock);
     pqueue_insert(pl->pq, ns);
+
     if (pl->sent_min_seq + 1 == packet->seq) 
         nudge = true;
     else
@@ -90,8 +94,7 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     if (pl->avail_min_seq + 1 == packet->seq)
         pl->avail_min_seq += 1;
 
-    if (packet->seq - pl->avail_min_seq > DELAY_LIM)
-        delay = true;
+    diff = packet->seq - pl->avail_min_seq;
 
     if (nudge == true) {
         pthread_mutex_unlock(&pl->lock);
@@ -99,6 +102,8 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
     }else {
         pthread_mutex_unlock(&pl->lock);
     }
-    if (delay)
-        sleep(1);
+
+    if (diff > DELAY_LIM) {
+        sleep(3);
+    }
 }
