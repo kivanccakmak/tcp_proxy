@@ -49,6 +49,7 @@ int sock_init(char *port)
         fprintf(stderr,
                 "getaddrinfo: %s\n", gai_strerror(rs_addr));
     }
+
     sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
 
@@ -117,7 +118,6 @@ void get_packets(char *port, FILE *fp)
                     else if (numbytes == 0)
                         goto CLOSE_CONN;
                 }
-                printf("numbytes: %d\n", numbytes);
                 if (recv_count > 0) {
                     fprintf(fp, "%s", buffer);
                     fflush(fp);

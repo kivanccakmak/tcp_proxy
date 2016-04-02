@@ -23,7 +23,6 @@ void *rx_chain(void *args)
     unsigned long recv_count = 0;
     unsigned char *raw_buf = NULL; 
     struct pollfd pfd;
-    pthread_t id = pthread_self();
     pool_t *pl = (pool_t *) malloc(sizeof(pool_t));
 
     // get struct pointers at thread initialization 
@@ -41,7 +40,6 @@ void *rx_chain(void *args)
             while (recv_count < PACKET_SIZE){
                 numbytes = recv(sockfd, raw_buf+recv_count,
                         PACKET_SIZE-recv_count, 0);
-                printf("numbytes: %d\n", numbytes);
                 if (numbytes > 0) {
                     recv_count += numbytes;
                 } else if (numbytes == 0) {
@@ -52,10 +50,10 @@ void *rx_chain(void *args)
         }
     }
 COMPLETE:
-    if ((int) sizeof(raw_buf) > 0) {
+    if (recv_count > 0) {
         add2queue(pl, raw_buf);
     }
-    pthread_exit(&id);
+    close(sockfd);
     return NULL;
 }
 
@@ -103,7 +101,7 @@ static void add2queue(pool_t *pl, unsigned char *raw_packet)
         pthread_mutex_unlock(&pl->lock);
     }
 
-    if (diff > DELAY_LIM) {
-        sleep(3);
-    }
+    /*if (diff > DELAY_LIM) {*/
+        /*sleep(1);*/
+    /*}*/
 }

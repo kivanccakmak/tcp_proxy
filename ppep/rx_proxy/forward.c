@@ -14,7 +14,7 @@ static void forward_data(fqueue_t* fq, int pack_cnt);
  * @return 
  */
 void *wait2forward(void *args) {
-    int pack_cnt = 0, conn_res = 0;
+    int pack_cnt = 0;
     int sockfd;
     bool send_flag = false;
     char *dest_ip = NULL, *dest_port = NULL;
@@ -28,18 +28,16 @@ void *wait2forward(void *args) {
     dest_ip = queue_args->dest_ip;
     dest_port = queue_args->dest_port;
 
-    printf("dest_ip: %s\n", dest_ip);
-    printf("dest_port: %s\n", dest_port);
+    printf("dest %s:%s\n", dest_ip, dest_port);
     
     // init receive socket
     server.sin_addr.s_addr = inet_addr(dest_ip);
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(dest_port));
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    conn_res = connect(sockfd, (struct sockaddr*) &server,
-            sizeof(server));
 
-    if (conn_res < 0) {
+    if (connect(sockfd, (struct sockaddr*)&server,
+                sizeof(server)) < 0) {
         perror("forward connection failed");
     }
 
@@ -55,16 +53,14 @@ void *wait2forward(void *args) {
     pthread_mutex_lock(&pl->lock);
 
     while (1) {
-        /*printf("in cond wait\n");*/
         to.tv_sec = 1;
         clock_gettime(CLOCK_MONOTONIC, &to);
         sleep(1);
-        /*printf("cond_timedwait\n");*/
         pthread_cond_timedwait(&pl->cond, &pl->lock, &to);
         send_flag = true;
         while (send_flag == true) {
-            /*printf("pack_cnt: %d\n", pack_cnt);*/
             pack_cnt = fill_queue(pl->pq, fq);  
+            printf("pack_cnt: %d\n", pack_cnt);
             if (pack_cnt > 0) {
                 pthread_mutex_unlock(&pl->lock);
                 if (pack_cnt > 0) {
@@ -95,19 +91,16 @@ void *wait2forward(void *args) {
  */
 static void forward_data(fqueue_t* fq, int pack_cnt)
 {
-    int byte = 0;
-    int count = 0;
-    int nwrite = 0;
+    int byte = 0, count = 0, numbytes = 0;
 
     for (count = 0; count < pack_cnt; count++) {
         while (byte < BLOCKSIZE) {
-            /*printf("packet: %s\n", fq->buffer[count]);*/
-            nwrite = send(fq->sockfd, fq->buffer[count],
+            numbytes = send(fq->sockfd, fq->buffer[count],
                     BLOCKSIZE - byte, 0);
-            if (nwrite < 0) {
+            if (numbytes < 0) {
                 perror("Error in forward_data");
-            } else if (nwrite > 0) {
-                byte += nwrite;
+            } else if (numbytes > 0) {
+                byte += numbytes;
             }
         }
         byte = 0;

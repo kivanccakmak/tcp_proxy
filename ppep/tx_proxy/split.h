@@ -68,6 +68,8 @@ typedef struct proxy_buff{
      */
     int rx_byte;
 
+    bool fin_flag;
+
     /**
      * @brief total amount of
      * transmitted bytes

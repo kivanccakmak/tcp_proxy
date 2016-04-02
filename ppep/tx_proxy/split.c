@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     if (ret) {
         printf("Failed to create queuer thread! [RET = %d]", ret);
         exit(0);
-    } else{
+    } else {
         printf("queuer thread initiated\n");
     }
 
@@ -83,9 +83,10 @@ int main(int argc, char *argv[])
         printf("controller thread initiated\n");
     }
 
+    pthread_join(controller_id, NULL);
     pthread_join(queuer_id, NULL);
     pthread_join(getter_id, NULL);
-    pthread_join(controller_id, NULL);
+
     return 0;
 }
 #endif
@@ -101,7 +102,7 @@ int main(int argc, char *argv[])
  */
 static void *run_controller(void *args)
 {
-    int i = 0, thr_res = 0;
+    int i = 0;
     struct cb_cntrl_args *cntrl_args = NULL;
     struct link **tcp_links = NULL;
     struct link *temp_link = NULL;
@@ -112,6 +113,7 @@ static void *run_controller(void *args)
     cntrl_args = (struct cb_cntrl_args*)
         malloc(sizeof(struct cb_cntrl_args*));
     cntrl_args = (struct cb_cntrl_args*) args;
+    pthread_t thr_ids[cntrl_args->conn_number];
 
     tcp_links = (struct link**) 
         malloc(sizeof(struct link*) * cntrl_args->conn_number);
@@ -129,17 +131,21 @@ static void *run_controller(void *args)
     dest_port = cntrl_args->dest_port;
     printf("%s:%s\n", dest_ip,dest_port);
 
+    // controlller just opens multiple connections, not
+    // manages number of them etc.
     printf("entering loop...\n");
     for (i = 0; i < cntrl_args->conn_number; i++) {
-        pthread_t t_id;
         set_link(dest_ip, dest_port, tcp_links[i]);
         tx_args[i]->buff = cntrl_args->buff;
         tx_args[i]->tx_link = tcp_links[i];
         sleep(1);
-        thr_res = pthread_create(&t_id, 
-                NULL, &tx_chain, (void *) tx_args[i]);  
-        pthread_join(t_id, NULL);
+        pthread_create(&(thr_ids[i]), NULL, 
+                &tx_chain, (void*) tx_args[i]);
     }
+
+    for (i = 0; i < cntrl_args->conn_number; i++)
+        pthread_join(thr_ids[i], NULL);
+
     return NULL;
 }
 
@@ -191,6 +197,10 @@ static void *tx_chain(void *args)
                     goto CONN_CLOSE;
             }
         } else {
+            if (buff->fin_flag == true) {
+                pthread_mutex_unlock(&buff->lock);
+                goto CONN_CLOSE;
+            }
             pthread_mutex_unlock(&buff->lock);
             sleep(1);
         }  
@@ -202,7 +212,7 @@ static void *tx_chain(void *args)
         pthread_mutex_unlock(&tx_link->lock);
     }
 CONN_CLOSE:
-    printf("in CONN_CLOSE\n");
+    printf("closing tx_chain socket\n");
     close(sockfd);
 }
 
@@ -232,7 +242,7 @@ static void set_link(char *dest_ip, char *dest_port,
                 sizeof(server)) > 0) {
         perror("connection failed. Error");
         exit(0);
-    }else {
+    } else {
         tcp_link->fd = sockfd;
     }
 
@@ -241,7 +251,7 @@ static void set_link(char *dest_ip, char *dest_port,
                 &len) == -1) {
         perror("getsockname");
         exit(0);
-    }else {
+    } else {
         tcp_link->src_port = ntohs(server.sin_port);
     }
 
@@ -299,6 +309,7 @@ static struct split_args* set_split_args(char *local_port)
     buff->tx_byte = 0;
     buff->set_ind = -1;
     buff->get_ind = 0;
+    buff->fin_flag = false;
     buff->capacity = INITIAL_CAPACITY;
     buff->buffer = (char **) 
         malloc(sizeof(char*) * buff->capacity);
@@ -496,6 +507,9 @@ CONN_CLOSE:
     if (recv_count > 0) {
         diff = add2buff(buff, raw_buf, recv_count);
     }
+    pthread_mutex_lock(&buff->lock);
+    buff->fin_flag = true;
+    pthread_mutex_unlock(&buff->lock);
     printf("total: %d\n", total);
     printf("no more payload interception!\n");
 }
@@ -607,7 +621,7 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh,
 
     if (ret < 0) {
         printf("nfq_set_verdict to NF_ACCEPT failed\n");
-    } else{
+    } else {
         printf("accepted \n");
     }
 

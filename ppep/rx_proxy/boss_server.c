@@ -167,7 +167,7 @@ void server_listen(char* server_port, pool_t *pl)
 
         thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
                 rx_args);
-        pthread_join(thread_id, NULL);
+        /*pthread_join(thread_id, NULL);*/
 
         if (thr_val < 0){
             perror("could not create thread");
