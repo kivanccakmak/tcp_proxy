@@ -4,13 +4,6 @@ static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
-static void server_listen(char* server_port,  
-        struct packet_pool *pool, queue_t *queue);
-
-static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, queue_t *queue, struct packet_pool *pool,
-        int poll_timeout); 
-
 #ifdef RX_PROXY
 int main(int argc, char * argv[])
 {
@@ -21,37 +14,67 @@ int main(int argc, char * argv[])
     }
 
     char *dest_ip, *dest_port, *server_port;
-    int queue_thr, pool_thr;
-    struct packet_pool *pool = NULL;
+    pool_t *pl;
+    queue_args_t *que_args;
+    pthread_t que_id, serv_id;
 
-    pthread_t queue_id, pool_id;
-    cb_reord_args_t *reord_args = (cb_reord_args_t *)
-        malloc(sizeof(cb_reord_args_t*));
+    que_args = (queue_args_t *) 
+        malloc(sizeof(queue_args_t));
 
     server_port = argv[1];
     dest_ip = argv[2];
     dest_port = argv[3];
 
-    printf("initialize queue \n");
-    queue_t *queue = queue_init(dest_ip, dest_port);
-    queue_thr = pthread_create(&queue_id, NULL, &queue_wait,
-        (void *) queue);
+    pl = pool_init();
 
-    pool = packet_pool_init();
-    reord_args->queue = queue;
-    reord_args->pool = pool;
-    pool_thr = pthread_create(&pool_id, NULL, &nudge_queue,
-            (void *) reord_args);
+    que_args->pl = pl;
+    que_args->dest_ip = dest_ip;
+    que_args->dest_port = dest_port;
+    
+    pthread_create(&que_id, NULL, &wait2forward,
+            (void*) que_args);
+    sleep(3);
+    
+    server_listen(server_port, pl);
 
-    printf("to server listen\n");
-    server_listen(server_port, pool, queue);
-
-    pthread_join(queue_id, NULL);
-    pthread_join(pool_id, NULL);
+    pthread_join(que_id, NULL);
 
     return 0;
 }
 #endif
+
+/**
+ * @brief initialize packet pool 
+ * struct to be used by receiver threads.
+ *
+ * @return 
+ */
+pool_t* pool_init() 
+{
+    pqueue_t *pq;
+    pool_t *pl;
+    pthread_condattr_t attr;
+
+    // initialize priority queue
+    pq = pqueue_init(10, cmp_pri, get_pri, set_pri,
+            get_pos, set_pos);
+
+    pl = (pool_t *) malloc(sizeof(pool_t));
+    pl->pq = (pqueue_t*) malloc(sizeof(pqueue_t));
+    pl->pq = pq;
+    pl->avail_min_seq = 0;
+    pl->sent_min_seq = 0;
+
+    pthread_condattr_init(&attr);
+    pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+
+    pthread_cond_init(&pl->cond, &attr);
+
+    pthread_mutex_init(&pl->lock, NULL);
+    pl->pq = pq;
+    
+    return pl;
+}
 
  /**
   * @brief 
@@ -62,26 +85,22 @@ int main(int argc, char * argv[])
   * from transmitter side of proxy.
   *
   * @param[in] server_port
-  * @param pool
-  * @param queue
+  * @param[out] queue
   */
-static void server_listen(char *server_port, 
-        struct packet_pool *pool, queue_t *queue)
+void server_listen(char* server_port, pool_t *pl)
 {
     int sockfd, newfd;
-    int yes = 1;
-    int rs_addr;
-    int set_val, bind_val, listen_val, thr_val;
+    int rs_addr, yes = 1, thr_val;
     char tx_ip[INET6_ADDRSTRLEN];
     uint32_t tx_port;
-    struct addrinfo hints, *addr;
     struct sigaction sig_sa;
     struct sockaddr_storage their_addr;
-    cb_rx_args_t *cb_args_ptr;
+    struct addrinfo hints, *addr;
+    socklen_t sin_size;
+    rx_args_t *rx_args;
 
-    addr = (struct addrinfo*) 
-        malloc(sizeof(struct addrinfo*));
-
+    // set server socket
+    addr = (struct addrinfo*) malloc(sizeof(struct addrinfo));
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -94,101 +113,65 @@ static void server_listen(char *server_port,
         exit(0);
     }
 
-    printf("-socket()\n");
-    sockfd = socket(addr->ai_family, 
+    sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
     if (sockfd == -1) {
         perror("socket");
         exit(0);
     }
 
-    printf("-setsockopt()\n");
-    set_val =
-        setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-                sizeof(int));
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
+                sizeof(int)) != 0) {
+        perror("setsockopt: ");
+        exit(0);
+    }
 
-    printf("-bind()\n");
-    bind_val = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
-    if(bind_val == -1){
+    if (bind(sockfd, addr->ai_addr, addr->ai_addrlen) == -1) {
         perror("server: bind");
         exit(0);
-    } else {
-        printf("socket binded\n");
     }
 
-    if (addr == NULL){
+    if (addr == NULL) {
         fprintf(stderr, "server: failed to bind\n");
         exit(0);
-    } else {
-        printf("addr set\n");
     }
-
+    
     printf("-listen()\n");
-    listen_val = listen(sockfd, BACKLOG);
-    if (listen_val == -1){
-        perror("listen");
-        exit(1);
+    if (listen(sockfd, BACKLOG) == -1) {
+        perror("listen: ");
+        exit(0);
     }
 
     // initialize sigaction to wait connections
-    printf("-sig_init()\n");
     sig_sa = sig_init();
-    printf("server: waiting for connections\n");
-
-    socklen_t sin_size;
     sin_size = sizeof their_addr;
-
-    while (1) {
+    
+    while (true) {
+        printf("server: waiting connections \
+                from port %s\n", server_port);
         newfd = accept(sockfd, (struct sockaddr *)&their_addr, 
                 &sin_size);
 
         pthread_t thread_id;
-
         inet_ntop(their_addr.ss_family,
             get_in_ipaddr((struct sockaddr *)&their_addr),
                 tx_ip, sizeof tx_ip);
-        
         tx_port = get_in_portnum((struct sockaddr *)&their_addr);
-
         printf("server: got connection from %s : %d \n", 
                 tx_ip, tx_port);
-
-        cb_args_ptr = (cb_rx_args_t *) 
-            malloc(sizeof(cb_rx_args_t));
-
-        set_cb_rx_args(cb_args_ptr, newfd, queue,
-                pool, -1);
+        
+        rx_args = (rx_args_t *) malloc(sizeof(rx_args));
+        rx_args->sockfd = newfd;
+        rx_args->pl = pl;
+        rx_args->poll_timeout = 100;
 
         thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
-                cb_args_ptr);
-        pthread_join(thread_id, NULL);
+                rx_args);
 
         if (thr_val < 0){
             perror("could not create thread");
         }
     }
-}
-
-/**
- * @brief 
- *
- * Set call-back arguments of
- * rx_chain() thread.
- *
- * @param[out] rx_args
- * @param[in] sockfd
- * @param[in] queue
- * @param[in] pool
- * @param[in] poll_timeout
- */
-static void set_cb_rx_args(cb_rx_args_t *rx_args,
-        int sockfd, queue_t *queue, struct packet_pool *pool,
-        int poll_timeout) 
-{
-    rx_args->sockfd = sockfd;
-    rx_args->poll_timeout = poll_timeout;
-    rx_args->pool = pool;
-    rx_args->queue = queue;
 }
 
 /**
@@ -224,4 +207,5 @@ static void sigchld_handler(int s)
 {
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
+
 

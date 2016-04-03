@@ -16,45 +16,102 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <assert.h>
+#include "time.h"
 
-#include "queue.h"
-#include "reorder.h"
+#include "forward.h"
 #include "../network/network.h"
 #include "link_receptor.h"
+#include "pqueue.h"
+
+#define CLOSE_CONN -1
+
+
+
+/**
+ * @brief buffers sequentially ordered 
+ * data from receptor thread, 
+ * passes towards agnostic end destination
+ */
+typedef struct fqueue{
+    /**
+     * @brief threads adds pointers 
+     * of sequentially ordered raw 
+     * data to this pointer array
+     */
+    char **buffer;
+
+    /**
+     * @brief number of bytes in **buf
+     */
+    int byte_count;
+
+    /**
+     * @brief capacity of **buf
+     */
+    int byte_capacity;
+
+    /**
+     * @brief to send data to
+     * end-destination
+     */
+    int sockfd;
+    
+    /**
+     * @brief SLEEP or SEND
+     */
+    int state;
+    
+    /**
+     * @brief number of sent packets
+     */
+    int sent;
+
+} fqueue_t;
+
+/**
+ * @brief receiver threads
+ * would access pool to put
+ * data inside priority queue.
+ * Queue would access pool to
+ * get forward data from
+ * priority queue.
+ */
+typedef struct pool{
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    pqueue_t* pq;
+    int avail_min_seq;
+    int sent_min_seq;
+}pool_t;
 
 /**
  * @brief call-back arguments
  * for link receptor thread.
  */
 typedef struct cb_rx_args{
-
     /**
-     * @brief socket descriptor of TCP connection
-     * in between link receptor and transmitter
-     * side of proxy
+     * @brief socket descriptor of new 
+     * TCP connection in between link receptor 
+     * and transmitter side of proxy
      */
     int sockfd;
-
     int poll_timeout;
-
-    struct packet_pool *pool;
-
-    queue_t *queue;
-
-} cb_rx_args_t;
+    pool_t *pl;
+} rx_args_t;
 
 /**
- * @brief call-back arguments
- * for reorder thread.
+ * @brief queue call back arguments.
  */
-typedef struct cb_reord_args{
+typedef struct queue_args{
+    pool_t *pl;
+    char *dest_port;
+    char *dest_ip;
+} queue_args_t;
 
-    queue_t *queue;
+void server_listen(char* server_port, pool_t* pool);
 
-    struct packet_pool *pool;
+pool_t* pool_init(); 
 
-} cb_reord_args_t;
-
-#define CLOSE_CONN -1
+int rcv_sock_init(char *server_port);
 
 #endif

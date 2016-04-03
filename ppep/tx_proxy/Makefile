@@ -7,8 +7,8 @@ VALGRIND = valgrind
 SPLIT_LOG = tx_proxy.log
 
 LOCAL_PORT = 5000
-RX_PROXY_IP = 192.168.2.202
-RX_PROXY_PORT = 5000
+RX_PROXY_IP = 192.168.2.12 
+RX_PROXY_PORT = 6000
 
 TARGET = proxy_tx 
 DBG_TARGET = debug_proxy_tx

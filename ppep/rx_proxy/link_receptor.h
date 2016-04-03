@@ -13,13 +13,18 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "queue.h"
 #include "boss_server.h"
+#include "pqueue.h"
 #include "../network/network.h"
-#include "reorder.h"
 
+
+/**
+ * @brief receiver chain thread
+ *
+ * @param args
+ *
+ * @return 
+ */
 void *rx_chain(void *args);
 
-void push2pool(char *raw_packet, 
-        struct packet_pool* pool);
 #endif

@@ -15,7 +15,7 @@ static struct listen_args* set_listen_args(
 
 static int set_tx_sock(char *dest_ip, char *dest_port); 
 
-static void add2buff(proxy_buff *buff, char *raw_buf); 
+static int add2buff(proxy_buff *buff, char *raw_buf, int recv_count); 
 
 static struct split_args* set_split_args(char *local_port);
 
@@ -30,6 +30,8 @@ static void set_link(char *dest_ip, char *dest_port,
 static void *run_controller(void *args);
 
 static void *tx_chain(void *args); 
+
+static void split_loop(int sockfd, proxy_buff *buff);
 
 #ifdef TX_PROXY
 int main(int argc, char *argv[])
@@ -59,7 +61,7 @@ int main(int argc, char *argv[])
     if (ret) {
         printf("Failed to create queuer thread! [RET = %d]", ret);
         exit(0);
-    } else{
+    } else {
         printf("queuer thread initiated\n");
     }
 
@@ -81,9 +83,10 @@ int main(int argc, char *argv[])
         printf("controller thread initiated\n");
     }
 
+    pthread_join(controller_id, NULL);
     pthread_join(queuer_id, NULL);
     pthread_join(getter_id, NULL);
-    pthread_join(controller_id, NULL);
+
     return 0;
 }
 #endif
@@ -100,71 +103,50 @@ int main(int argc, char *argv[])
 static void *run_controller(void *args)
 {
     int i = 0;
-    int thr_res = 0;
     struct cb_cntrl_args *cntrl_args = NULL;
     struct link **tcp_links = NULL;
     struct link *temp_link = NULL;
     struct cb_tx_args **tx_args = NULL;
     char *dest_ip = (char *) malloc(sizeof(char*));;
     char *dest_port = (char *) malloc(sizeof(char*));
-    pthread_t **tx_ids;
 
     cntrl_args = (struct cb_cntrl_args*)
         malloc(sizeof(struct cb_cntrl_args*));
     cntrl_args = (struct cb_cntrl_args*) args;
+    pthread_t thr_ids[cntrl_args->conn_number];
 
     tcp_links = (struct link**) 
         malloc(sizeof(struct link*) * cntrl_args->conn_number);
-    tx_ids = (pthread_t**)
-        malloc(sizeof(pthread_t*) * cntrl_args->conn_number);
     tx_args = (struct cb_tx_args**)
         malloc(sizeof(struct cb_tx_args*) * cntrl_args->conn_number);
 
     for (i = 0; i < cntrl_args->conn_number; i++) {
         tcp_links[i] = (struct link*) malloc(sizeof(struct link));
-        tx_ids[i] = (pthread_t *) malloc(sizeof(pthread_t));
         tx_args[i] = (struct cb_tx_args*) malloc(sizeof(struct cb_tx_args));
     }
 
-    printf("set pointer arrays\n");
+    /*printf("set pointer arrays\n");*/
     temp_link = (struct link*) malloc(sizeof(struct link*)); 
     dest_ip = cntrl_args->dest_ip;
     dest_port = cntrl_args->dest_port;
     printf("%s:%s\n", dest_ip,dest_port);
 
+    // controlller just opens multiple connections, not
+    // manages number of them etc.
     printf("entering loop...\n");
-    while (1) {
-        for (i = 0; i < cntrl_args->conn_number; i++) {
-            printf("i: %d\n", i);
-            set_link(dest_ip, dest_port, tcp_links[i]);
-            printf("**\n");
-            printf("after set_link()\n");
-            printf("**\n");
-            tx_args[i]->buff = cntrl_args->buff;
-            tx_args[i]->tx_link = tcp_links[i];
-            printf("sizeof(tx_args[i]->tx_link :%d\n",
-                    (int) sizeof(tx_args[i]->tx_link));
-            sleep(1);
-            printf("***\n");
-            printf("before tx_chain()\n");
-            printf("***\n");
-            thr_res = pthread_create(tx_ids[i], 
-                    NULL, &tx_chain, (void *) tx_args[i]);  
-        }
-        printf("== after loop ==\n");
-        sleep(5);
-        for (i = 0; i < cntrl_args->conn_number; i++) {
-            pthread_mutex_lock(&tcp_links[i]->lock);
-            tcp_links[i]->state = PASSIVE;
-            pthread_mutex_unlock(&tcp_links[i]->lock);
-            sleep(3);
-            pthread_mutex_lock(&tcp_links[i]->lock);
-            if (tcp_links[i]->state == CLOSED) {
-                printf("link %d is closed \n", i);
-            }
-            pthread_mutex_unlock(&tcp_links[i]->lock);
-        }
-   }
+    for (i = 0; i < cntrl_args->conn_number; i++) {
+        set_link(dest_ip, dest_port, tcp_links[i]);
+        tx_args[i]->buff = cntrl_args->buff;
+        tx_args[i]->tx_link = tcp_links[i];
+        sleep(1);
+        pthread_create(&(thr_ids[i]), NULL, 
+                &tx_chain, (void*) tx_args[i]);
+    }
+
+    for (i = 0; i < cntrl_args->conn_number; i++)
+        pthread_join(thr_ids[i], NULL);
+
+    return NULL;
 }
 
 
@@ -179,74 +161,59 @@ static void *run_controller(void *args)
  */
 static void *tx_chain(void *args) 
 {
-    printf("***\n");
-    printf("in tx_chain()\n");
-    printf("***\n");
     struct cb_tx_args *tx_args = NULL;
-    encaps_packet_t packet;
     struct link *tx_link = NULL;
+    encaps_packet_t packet;
     proxy_buff *buff;
-    int ind = 0, count = 0, send_res = 0;
-    int fd;
-    pthread_t id = pthread_self();
+    int diff = 0, ind = 0, sent_count = 0, 
+        numbytes = 0, total = 0, sockfd;
 
-    tx_args = (struct cb_tx_args*)
-        malloc(sizeof(struct cb_tx_args*));
-
+    tx_args = (struct cb_tx_args*)  malloc(sizeof(struct cb_tx_args));
     buff = (proxy_buff*) malloc(sizeof(proxy_buff));
-    tx_link = (struct link*)
-        malloc(sizeof(struct link*));
-
+    tx_link = (struct link*) malloc(sizeof(struct link));
     tx_args = (struct cb_tx_args*) args;
     buff = tx_args->buff;
     tx_link = tx_args->tx_link;
-    fd = tx_link->fd;
-    printf("before loop in tx_chain() \n");
-    printf("buff->get_ind: %d\n", buff->get_ind);
-    printf("buff->set_ind: %d\n", buff->set_ind);
-    printf("BLOCKSIZE: %d\n", (int) BLOCKSIZE);
-    while (1) {
+    sockfd = tx_link->fd;
+
+    while (true) {
         pthread_mutex_lock(&buff->lock);
-        if (buff->set_ind >= buff->get_ind) {
+        diff = buff->set_ind - buff->get_ind;
+        if (diff >= 0){ 
             ind = buff->get_ind;
-            printf("buff->buffer[%d]: %s\n", ind, buff->buffer[ind]);
-            printf("buff->rx_byte: %d\n", buff->rx_byte);
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
             packet.seq = (unsigned short) buff->get_ind;
-            printf("packet.raw_packet: %s\n", packet.raw_packet);
             buff->get_ind++;
-            printf("unlock\n");
             pthread_mutex_unlock(&buff->lock);
-            count = 0;
-            while (count < (int) PACKET_SIZE) {
-                printf("*** *** ***\n");
-                printf("sending ...\n");
-                send_res = send(fd, 
-                    &((unsigned char*) &packet)[count],
-                        PACKET_SIZE-count, 0);
-                if (send_res > 0)
-                    count += send_res;
+            sent_count = 0;
+            while (sent_count < (int) PACKET_SIZE) {
+                numbytes = send(sockfd, 
+                    &((unsigned char*) &packet)[sent_count],
+                        (size_t) PACKET_SIZE-sent_count, 0);
+                if (numbytes > 0) {
+                    sent_count += numbytes;
+                    total += numbytes;
+                } else if(numbytes == 0)
+                    goto CONN_CLOSE;
             }
         } else {
-            printf("unlock ...\n");
+            if (buff->fin_flag == true) {
+                pthread_mutex_unlock(&buff->lock);
+                goto CONN_CLOSE;
+            }
             pthread_mutex_unlock(&buff->lock);
-            printf("unlocked ...\n");
-            sleep(2);
+            sleep(1);
         }  
-        printf("locking tx_link mutex ...\n");
         pthread_mutex_lock(&tx_link->lock);
-        printf("tx_link->state: %d\n", tx_link->state);
         if (tx_link->state == PASSIVE) {
-            printf("*** link closed *** \n");
-            close(fd);
-            tx_link->state = CLOSED;
             pthread_mutex_unlock(&tx_link->lock);
-            pthread_exit(&id);
+            goto CONN_CLOSE;
         }
-        printf("unlocking tx_link mutex ...\n");
         pthread_mutex_unlock(&tx_link->lock);
-        printf("------------------------------\n");
     }
+CONN_CLOSE:
+    printf("closing tx_chain socket\n");
+    close(sockfd);
 }
 
 /**
@@ -262,7 +229,6 @@ static void set_link(char *dest_ip, char *dest_port,
 {
     struct sockaddr_in server;
     int sockfd;
-    int conn_res = 0, get_res = 0;
     socklen_t len = sizeof(server);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -272,11 +238,8 @@ static void set_link(char *dest_ip, char *dest_port,
     server.sin_port = htons(atoi(dest_port));
 
     printf("tcp link connecting ...\n");
-    conn_res = connect(sockfd, (struct sockaddr*)&server,
-            sizeof(server));
-    printf("***\n");
-    printf("conn_res: %d\n", conn_res);
-    if (conn_res > 0) {
+    if (connect(sockfd, (struct sockaddr*)&server,
+                sizeof(server)) > 0) {
         perror("connection failed. Error");
         exit(0);
     } else {
@@ -284,14 +247,14 @@ static void set_link(char *dest_ip, char *dest_port,
     }
 
     printf("connected ... \n");
-    get_res = 
-        getsockname(sockfd, (struct sockaddr *)&server, &len);
-    if (get_res == -1) {
+    if (getsockname(sockfd, (struct sockaddr*)&server,
+                &len) == -1) {
         perror("getsockname");
         exit(0);
     } else {
         tcp_link->src_port = ntohs(server.sin_port);
     }
+
     tcp_link->state = ACTIVE;
     pthread_mutex_init(&tcp_link->lock, NULL);
     pthread_cond_init(&tcp_link->cond, NULL);
@@ -319,11 +282,6 @@ static struct cb_cntrl_args* set_controller_args(char *dest_ip,
     cntrl_args->dest_port = dest_port;
     cntrl_args->buff = buff;
     cntrl_args->conn_number = CONN_NUMBER;
-    printf("set cb_cntrl_args\n");
-    printf("cntrl_args->buff->set_ind: %d\n",
-            cntrl_args->buff->set_ind);
-    printf("cntrl_args->buff->get_ind: %d\n",
-            cntrl_args->buff->get_ind);
     return cntrl_args;
 }
 
@@ -351,6 +309,7 @@ static struct split_args* set_split_args(char *local_port)
     buff->tx_byte = 0;
     buff->set_ind = -1;
     buff->get_ind = 0;
+    buff->fin_flag = false;
     buff->capacity = INITIAL_CAPACITY;
     buff->buffer = (char **) 
         malloc(sizeof(char*) * buff->capacity);
@@ -422,25 +381,25 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
     pthread_exit(NULL);
 }
 
+
+/**
+ * @brief payload hijaker thread that
+ * gets data from nfqueue and puts into
+ * proxy buffer 
+ *
+ * @param args
+ *
+ * @return 
+ */
 static void *get_payload(void *args) 
 {
-    int i = 0;
-    int rs_addr, numbytes = 0, recv_count = 0;
-    int rv, yes = 1, set_val, bind_val, listen_val;
+    int yes = 1, rs_addr;
     struct addrinfo hints;
     struct addrinfo *addr = NULL;
-    struct sockaddr_storage their_addr;
-    struct pollfd pfd;
     struct split_args *split = NULL;
-    char src_ip[INET6_ADDRSTRLEN];
-    uint32_t src_port;
-    bool exit_flag = false;
     proxy_buff *buff = NULL;
     char *local_port = NULL;
-    socklen_t sin_size;
-    int split_sock;
-    char *raw_buf = (char*) malloc(BLOCKSIZE);
-    printf("in get_payload\n");
+    int sockfd;
 
     // get call back arguments
     split = (struct split_args*) 
@@ -449,87 +408,105 @@ static void *get_payload(void *args)
     split = (struct split_args*) args;
     local_port = split->local_port;
     buff = split->buff;
-
-    // set local socket file descriptor 
-    // to get data from nfqueue
+    // set local socket fd to get data from nfqueue 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    printf("hints set\n");
 
     addr = (struct addrinfo*) 
         malloc(sizeof(struct addrinfo*));
-    printf("local_port: %s\n", local_port);
     rs_addr = getaddrinfo(NULL, local_port, &hints, &addr);
 
     if (addr == NULL) {
         fprintf(stderr, "server: failed to bind \n");
         exit(1);
-    } else 
-        printf("addr set\n");
-
-    printf("initiating socket ...\n");
-    split_sock = socket(addr->ai_family, addr->ai_socktype,
+    }  
+    sockfd = socket(addr->ai_family, addr->ai_socktype,
             addr->ai_protocol);
-
-    printf("after socket() \n");
-    if (split_sock == -1) {
+    if (sockfd == -1) {
         perror("socket:");
         exit(0);
-    } else
-        printf("socket initiated\n");
-    set_val = setsockopt(split_sock, SOL_SOCKET, 
-            SO_REUSEADDR, &yes, sizeof(int));
-
-    printf("binding to server\n");
-    bind_val = bind(split_sock, addr->ai_addr, addr->ai_addrlen);
-    if (bind_val == -1) {
-        close(split_sock);
+    }
+    if (setsockopt(sockfd, SOL_SOCKET,
+                SO_REUSEADDR, &yes, sizeof(int)) != 0) {
+        perror("setsockopt: ");
+        exit(0);
+    }
+    if (bind(sockfd, addr->ai_addr, 
+                addr->ai_addrlen) == -1) {
+        close(sockfd);
         perror("server: bind");
     }
 
-    listen_val = listen(split_sock, 1);
+    split_loop(sockfd, buff);
+    return NULL;
+}
+
+
+/**
+ * @brief 
+ *
+ * @param sockfd to get data from nfqueue.
+ * @param buff buffer of transmit proxy,
+ * to sync with forwarder threads.
+ */
+static void split_loop(int sockfd, proxy_buff *buff) 
+{
+    int listen_val, recv_count = 0, numbytes = 0;
+    int total = 0, diff = 0;
+    struct sockaddr_storage their_addr;
+    struct pollfd pfd;
+    socklen_t sin_size;
     sin_size = sizeof(their_addr);
+    char src_ip[INET6_ADDRSTRLEN], *raw_buf = NULL;
+    uint32_t src_port;
 
-    while (1) {
-        split_sock = accept(split_sock, (struct sockaddr*)&their_addr,
-                &sin_size);
+    listen_val = listen(sockfd, 1);
+    sockfd = accept(sockfd, 
+            (struct sockaddr*)&their_addr, &sin_size);
+    inet_ntop(their_addr.ss_family, 
+            get_in_ipaddr((struct sockaddr*)&their_addr),
+            src_ip, sizeof(src_ip));
+    src_port = get_in_portnum((struct sockaddr*)&their_addr);
+    printf("connection established with %s:%d\n",
+            src_ip, (int) src_port);
 
-        pfd.fd = split_sock;
-        pfd.events = POLLIN;
-
-        inet_ntop(their_addr.ss_family,
-                get_in_ipaddr((struct sockaddr*)&their_addr),
-                src_ip, sizeof(src_ip));
-        src_port = get_in_portnum((struct sockaddr*)&their_addr);
-
-        printf("got connection from %s : %d \n", src_ip, src_port);
-        while (1) {
-            // poll() waits for file descriptor state change 
-            rv = poll(&pfd, 1, -1);
+    pfd.fd = sockfd;
+    pfd.events = POLLIN;
+    while (true) {
+        if (poll(&pfd, 1, 100) > 0) {
             recv_count = 0;
-            while ((recv_count < (int) BLOCKSIZE) 
-                    & (exit_flag == false)) {
-                numbytes = recv(split_sock, raw_buf+recv_count,
-                        BLOCKSIZE-recv_count, 0);
-                /*printf("numbytes: %d\n", numbytes);*/
-                if (numbytes > 0)
-                    recv_count += numbytes;
-                else
-                    exit_flag = true;
+            if (pfd.revents == POLLERR){
+                perror("perr: ");
+                goto CONN_CLOSE;
             }
-            /*printf("raw_buf: %s\n", raw_buf);*/
-            if (exit_flag) {
-                close(split_sock);
-                exit(0);
-            }
-            i++;
-            add2buff(buff, raw_buf);
-            sleep(2);
-            raw_buf = (char *) malloc(BLOCKSIZE);
-        }
+            if (pfd.revents == POLLIN) {
+                raw_buf = (char *) malloc(BLOCKSIZE);
+                while (recv_count < (int) BLOCKSIZE) {
+                    numbytes = recv(sockfd, raw_buf+recv_count, 
+                            BLOCKSIZE-recv_count, 0);
+                    if (numbytes > 0) {
+                        recv_count += numbytes;
+                        total += numbytes;
+                    } else if(numbytes == 0)
+                        goto CONN_CLOSE;
+                }
+                if (recv_count > 0) {
+                    diff = add2buff(buff, raw_buf, recv_count);
+                }
+           }
+        } 
     }
+CONN_CLOSE:
+    if (recv_count > 0) {
+        diff = add2buff(buff, raw_buf, recv_count);
+        total += diff;
+    }
+    printf("no more interception, bytes: %d\n", total);
+    pthread_mutex_lock(&buff->lock);
+    buff->fin_flag = true;
+    pthread_mutex_unlock(&buff->lock);
 }
 
 /**
@@ -539,20 +516,30 @@ static void *get_payload(void *args)
  *
  * @param[out] buff
  * @param[in] raw_buf
+ * @param[in] recv_count
+ *
+ * return 
  */
-static void add2buff(proxy_buff *buff, char *raw_buf) 
+static int add2buff(proxy_buff *buff, char *raw_buf,
+        int recv_count) 
 {
     bool extend = false;
-    int remained = 0;
-    int i = 0;
-    int pre_count = 0;
+    int remained = 0, i = 0, pre_count = 0;
+
+    // fill remaining as NULL, if residue
+    if (recv_count > 0 && recv_count < BLOCKSIZE) {
+        int count = 0;
+        for (count = recv_count; count < BLOCKSIZE; count++){
+            raw_buf[count] = '\0';
+        }
+    }
 
     pthread_mutex_lock(&buff->lock);
 
+    // check capacity overflow
     remained = buff->capacity - buff->set_ind;
     extend = (remained) < (2 * (int) sizeof(char*));
     if (extend) {
-        printf("in extend()\n");
         pre_count = buff->capacity;
         buff->capacity = buff->capacity * 2;
         buff->buffer = (char **) realloc(buff->buffer,
@@ -564,13 +551,11 @@ static void add2buff(proxy_buff *buff, char *raw_buf)
 
     }
     buff->set_ind++;
-    printf("===            === \n");
     buff->buffer[buff->set_ind] = raw_buf;
-    printf("buff->buffer[%d]: %s\n", buff->set_ind,
-            (char *) buff->buffer[buff->set_ind]);
-    printf("===            === \n");
     buff->rx_byte += BLOCKSIZE;
+
     pthread_mutex_unlock(&buff->lock);
+    return buff->set_ind - buff->get_ind;
 }
 
 /**
@@ -631,9 +616,11 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh,
 
     if (ret < 0) {
         printf("nfq_set_verdict to NF_ACCEPT failed\n");
-    } else{
+    } else {
         printf("accepted \n");
     }
 
     return 0;
 }
+
+

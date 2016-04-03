@@ -3,9 +3,9 @@ TARGET = stream
 SRC = stream.c
 DEP = ../file_read/file_read.c
 
-DEST_IP = 192.168.2.202 
+DEST_IP = 192.168.2.202
 DEST_PORT = 5050
-FILENAME = kivanc.txt
+FILENAME = book.txt
 
 $(TARGET): $(SRC) $(DEP) 
 	$(GCC) $(SRC) $(DEP) -o $(TARGET) -DSTREAM

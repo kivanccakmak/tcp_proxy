@@ -4,7 +4,8 @@ static void stream(char *ip_addr, char *port,
         FILE *fp);
 
 #ifdef STREAM
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     if (argc != 4) {
         printf("Wrong Usage\n");
         printf("%s dest_ip dest_port file_name\n", argv[0]);
@@ -49,6 +50,7 @@ static void stream(char *ip_addr, char *port, FILE *fp)
     printf("connecting ...\n");
     conn_res = connect(sockfd, (struct sockaddr*)&server,
             sizeof(server));
+    printf("conn_res: %d\n", conn_res);
     if (conn_res < 0) {
         perror("connection failed. Error");
     }
@@ -66,16 +68,13 @@ static void stream(char *ip_addr, char *port, FILE *fp)
             read_file(fp, byte_count, byte_count + residue, thr_buff);
             capacity = residue;
         }
-	printf("capacity: %d\n", capacity);
         while (temp_count < capacity) {
             amount = write(sockfd, thr_buff+temp_count, 
                     capacity-temp_count); 
             if (amount > 0) {
                 temp_count += amount;
             }
-            printf("amount: %d\n", amount);
         }
-	printf("byte_count: %d\n", byte_count);
         byte_count += temp_count;
         temp_count = 0;
     }
