@@ -4,6 +4,8 @@ static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
+static void accept_loop(int sockfd, pool_t* pl); 
+
 #ifdef RX_PROXY
 int main(int argc, char * argv[])
 {
@@ -35,7 +37,7 @@ int main(int argc, char * argv[])
             (void*) que_args);
     sleep(3);
     
-    server_listen(server_port, pl);
+    server_start(server_port, pl);
 
     pthread_join(que_id, NULL);
 
@@ -77,27 +79,18 @@ pool_t* pool_init()
 }
 
  /**
-  * @brief 
-  *
-  * Listens from ip_addr:port and 
-  * initiates new thread whenever 
-  * new TCP connection established
-  * from transmitter side of proxy.
+  * @brief initializes server socket
+  * and enters connection accepting
+  * loop
   *
   * @param[in] server_port
   * @param[out] queue
   */
-void server_listen(char* server_port, pool_t *pl)
+void server_start(char* server_port, pool_t *pl)
 {
-    int sockfd, newfd;
-    int rs_addr, yes = 1, thr_val;
-    char tx_ip[INET6_ADDRSTRLEN];
-    uint32_t tx_port;
+    int sockfd, rs_addr, yes = 1;
     struct sigaction sig_sa;
-    struct sockaddr_storage their_addr;
     struct addrinfo hints, *addr;
-    socklen_t sin_size;
-    rx_args_t *rx_args;
 
     // set server socket
     addr = (struct addrinfo*) malloc(sizeof(struct addrinfo));
@@ -112,65 +105,70 @@ void server_listen(char* server_port, pool_t *pl)
         perror("getaddrinfo:");
         exit(0);
     }
-
     sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
     if (sockfd == -1) {
         perror("socket");
         exit(0);
     }
-
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
                 sizeof(int)) != 0) {
         perror("setsockopt: ");
         exit(0);
     }
-
     if (bind(sockfd, addr->ai_addr, addr->ai_addrlen) == -1) {
         perror("server: bind");
         exit(0);
     }
-
     if (addr == NULL) {
         fprintf(stderr, "server: failed to bind\n");
         exit(0);
     }
-    
     printf("-listen()\n");
     if (listen(sockfd, BACKLOG) == -1) {
         perror("listen: ");
         exit(0);
     }
 
-    // initialize sigaction to wait connections
     sig_sa = sig_init();
-    sin_size = sizeof their_addr;
-    
-    while (true) {
-        printf("server: waiting connections \
-                from port %s\n", server_port);
-        newfd = accept(sockfd, (struct sockaddr *)&their_addr, 
-                &sin_size);
+    accept_loop(sockfd, pl);
+}
 
-        pthread_t thread_id;
+/**
+ * @brief Listens from ip_addr:port and 
+ * initiates new thread whenever 
+ * new TCP connection established
+ * from transmitter side of proxy.
+ *
+ * @param[in] sockfd
+ * @param[in] pl
+ */
+static void accept_loop(int sockfd, pool_t* pl) 
+{
+    int newfd, thr_out;
+    char tx_ip[INET6_ADDRSTRLEN];
+    uint32_t tx_port;
+    struct sockaddr_storage their_addr;
+    rx_args_t *rx_args = NULL;
+    socklen_t sin_size;
+    sin_size = sizeof(their_addr);
+
+    while (true) {
+        newfd = accept(sockfd, (struct sockaddr*)&their_addr,
+                &sin_size);
+        pthread_t t_id;
         inet_ntop(their_addr.ss_family,
-            get_in_ipaddr((struct sockaddr *)&their_addr),
-                tx_ip, sizeof tx_ip);
-        tx_port = get_in_portnum((struct sockaddr *)&their_addr);
-        printf("server: got connection from %s : %d \n", 
-                tx_ip, tx_port);
-        
-        rx_args = (rx_args_t *) malloc(sizeof(rx_args));
+                get_in_ipaddr((struct sockaddr*)&their_addr),
+                tx_ip, sizeof(tx_ip));
+        tx_port = get_in_portnum((struct sockaddr*)&their_addr);
+        printf("connection from %s : %d \n", tx_ip, tx_port);
+        rx_args = (rx_args_t*) malloc(sizeof(rx_args_t));
         rx_args->sockfd = newfd;
         rx_args->pl = pl;
         rx_args->poll_timeout = 100;
-
-        thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
-                rx_args);
-
-        if (thr_val < 0){
+        thr_out = pthread_create(&t_id, NULL, &rx_chain, rx_args);
+        if (thr_out < 0) 
             perror("could not create thread");
-        }
     }
 }
 
@@ -207,5 +205,3 @@ static void sigchld_handler(int s)
 {
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
-
-
