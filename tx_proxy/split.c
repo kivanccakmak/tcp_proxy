@@ -453,12 +453,11 @@ static void *get_payload(void *args)
  */
 static void split_loop(int sockfd, proxy_buff *buff) 
 {
-    int listen_val, recv_count = 0, numbytes = 0;
-    int total = 0, diff = 0;
+    int listen_val, recv_count = 0, 
+        numbytes = 0, total = 0, diff = 0;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
-    socklen_t sin_size;
-    sin_size = sizeof(their_addr);
+    socklen_t sin_size = sizeof(their_addr);
     char src_ip[INET6_ADDRSTRLEN], *raw_buf = NULL;
     uint32_t src_port;
 
@@ -473,15 +472,14 @@ static void split_loop(int sockfd, proxy_buff *buff)
             src_ip, (int) src_port);
 
     pfd.fd = sockfd;
-    pfd.events = POLLIN;
+    pfd.events = POLLIN | POLLERR;
     while (true) {
         if (poll(&pfd, 1, 100) > 0) {
             recv_count = 0;
             if (pfd.revents == POLLERR){
                 perror("perr: ");
                 goto CONN_CLOSE;
-            }
-            if (pfd.revents == POLLIN) {
+            } else if (pfd.revents == POLLIN) {
                 raw_buf = (char *) malloc(BLOCKSIZE);
                 while (recv_count < (int) BLOCKSIZE) {
                     numbytes = recv(sockfd, raw_buf+recv_count, 
@@ -489,7 +487,7 @@ static void split_loop(int sockfd, proxy_buff *buff)
                     if (numbytes > 0) {
                         recv_count += numbytes;
                         total += numbytes;
-                    } else if(numbytes == 0)
+                    } else
                         goto CONN_CLOSE;
                 }
                 if (recv_count > 0) {
