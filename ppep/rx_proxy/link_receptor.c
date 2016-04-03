@@ -1,6 +1,7 @@
 #include "link_receptor.h"
 
-static void add2queue(pool_t *pl, unsigned char *raw_packet);
+static void add2queue(pool_t *pl,
+        unsigned char *raw_packet);
 
 /**
  * @brief 
@@ -68,40 +69,25 @@ COMPLETE:
  */
 static void add2queue(pool_t *pl, unsigned char *raw_packet)
 {
-    int diff;
-    bool nudge = false;
     encaps_packet_t *packet = NULL;
-
     packet = (encaps_packet_t *) raw_packet;
 
     node_t *ns = (node_t *) malloc(sizeof(node_t));
-
     ns->pri = packet->seq; 
     ns->raw_packet = packet->raw_packet;
-    printf("packet->seq: %d\n", (int) packet->seq);
     
-    // now lock queue and insert data
+    // lock queue and insert data
     pthread_mutex_lock(&pl->lock);
     pqueue_insert(pl->pq, ns);
-
-    if (pl->sent_min_seq + 1 == packet->seq) 
-        nudge = true;
-    else
-        nudge = false;
 
     if (pl->avail_min_seq + 1 == packet->seq)
         pl->avail_min_seq += 1;
 
-    diff = packet->seq - pl->avail_min_seq;
-
-    if (nudge == true) {
+    if (pl->sent_min_seq + 1 == packet->seq) {
         pthread_mutex_unlock(&pl->lock);
         pthread_cond_signal(&pl->cond);
-    }else {
+    } else {
         pthread_mutex_unlock(&pl->lock);
     }
 
-    /*if (diff > DELAY_LIM) {*/
-        /*sleep(1);*/
-    /*}*/
 }
