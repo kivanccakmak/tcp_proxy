@@ -144,11 +144,11 @@ void server_listen(char* server_port, pool_t *pl)
 
     // initialize sigaction to wait connections
     sig_sa = sig_init();
-    printf("server: waiting connections from: %s\n", server_port);
     sin_size = sizeof their_addr;
     
-    // wait for new TCP connections and accept them
-    while (1) {
+    while (true) {
+        printf("server: waiting connections \
+                from port %s\n", server_port);
         newfd = accept(sockfd, (struct sockaddr *)&their_addr, 
                 &sin_size);
 
@@ -167,7 +167,6 @@ void server_listen(char* server_port, pool_t *pl)
 
         thr_val = pthread_create(&thread_id, NULL, &rx_chain, 
                 rx_args);
-        /*pthread_join(thread_id, NULL);*/
 
         if (thr_val < 0){
             perror("could not create thread");

@@ -459,9 +459,8 @@ static void split_loop(int sockfd, proxy_buff *buff)
     struct pollfd pfd;
     socklen_t sin_size;
     sin_size = sizeof(their_addr);
-    char src_ip[INET6_ADDRSTRLEN];
+    char src_ip[INET6_ADDRSTRLEN], *raw_buf = NULL;
     uint32_t src_port;
-    char *raw_buf = NULL;
 
     listen_val = listen(sockfd, 1);
     sockfd = accept(sockfd, 
@@ -490,28 +489,24 @@ static void split_loop(int sockfd, proxy_buff *buff)
                     if (numbytes > 0) {
                         recv_count += numbytes;
                         total += numbytes;
-                    } else if(numbytes == 0){
+                    } else if(numbytes == 0)
                         goto CONN_CLOSE;
-                    }
                 }
                 if (recv_count > 0) {
                     diff = add2buff(buff, raw_buf, recv_count);
-                    if (diff > WAIT_LIMIT)
-                        sleep(1);
                 }
            }
         } 
     }
 CONN_CLOSE:
-    printf("in conn close\n");
     if (recv_count > 0) {
         diff = add2buff(buff, raw_buf, recv_count);
+        total += diff;
     }
+    printf("no more interception, bytes: %d\n", total);
     pthread_mutex_lock(&buff->lock);
     buff->fin_flag = true;
     pthread_mutex_unlock(&buff->lock);
-    printf("total: %d\n", total);
-    printf("no more payload interception!\n");
 }
 
 /**

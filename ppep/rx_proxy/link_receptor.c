@@ -54,6 +54,7 @@ COMPLETE:
     if (recv_count > 0) {
         add2queue(pl, raw_buf);
     }
+    printf("rx_chain is closed\n");
     close(sockfd);
     return NULL;
 }
