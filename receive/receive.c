@@ -3,21 +3,25 @@
 #ifdef RECV
 int main(int argc, char *argv[]) 
 {
-    if (argc != 3) {
+    if (argc != 4) {
         printf("Wrong usage\n");
-        printf("%s port_number output_file\n", argv[0]);
+        printf("%s port_number output_file log_file\n", argv[0]);
         return 0;
     }
 
     char *port;
     char *output;
-    FILE *fp;
+    char *log_file;
+    FILE *fp, *logp;
 
     port = argv[1];
     output = argv[2];
-    fp = fopen(output, "a");
+    log_file = argv[3];
 
-    get_packets(port, fp);
+    fp = fopen(output, "a");
+    logp = fopen(log_file, "a");
+
+    get_packets(port, fp, logp);
     return 0;
 }
 #endif
@@ -78,14 +82,19 @@ int sock_init(char *port)
  *
  * @param[in] port
  * @param[in] fp
+ * @param[in] logp
  */
-void get_packets(char *port, FILE *fp) 
+void get_packets(char *port, FILE *fp, FILE *logp) 
 { 
-    int sockfd, numbytes = 0, i = 0, recv_count = 0;
+    int sockfd, numbytes = 0, 
+        i = 0, recv_count = 0, total = 0;
     char buffer[BLOCKSIZE];
     struct sockaddr_storage their_addr;
     socklen_t sin_size;
     struct pollfd pfd;
+    char log_str[100];
+    clock_t t1, t2;
+    float diff;
 
     sin_size = sizeof(their_addr);
     sockfd = sock_init(port);
@@ -103,6 +112,8 @@ void get_packets(char *port, FILE *fp)
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
+
+    t1 = clock();
     
     // receive until connection closed
     while (true) {
@@ -113,20 +124,33 @@ void get_packets(char *port, FILE *fp)
                 while (recv_count < BLOCKSIZE) {
                     numbytes = recv(sockfd, buffer+recv_count,
                             BLOCKSIZE-recv_count, 0);
-                    if (numbytes > 0) 
+                    if (numbytes > 0) {
                         recv_count += numbytes;
-                    else if (numbytes == 0)
+                        total += numbytes;
+                    } else if (numbytes == 0)
                         goto CLOSE_CONN;
                 }
                 if (recv_count > 0) {
+                    t2 = clock();
+                    diff = ((float) (t2 - t1) / 1000000) * 1000;
+                    sprintf(log_str, "diff: %f bytes: %d\n",
+                            diff, total);
                     fprintf(fp, "%s", buffer);
+                    fprintf(logp, "%s", log_str);
                     fflush(fp);
+                    fflush(logp);
                 }
             }
         }
     }
 CLOSE_CONN:
     if (recv_count > 0) {
+        total += recv_count;
+        t2 = clock();
+        diff = ((float) (t2 - t1) / 1000000) * 1000;
+        sprintf(log_str, "diff: %f bytes: %d\n",
+                diff, total);
+        fprintf(logp, "%s", log_str);
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
                 fprintf(fp, "%c", buffer[i]);

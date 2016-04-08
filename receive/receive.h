@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -15,7 +16,7 @@
 #include <poll.h>
 #include "../network/network.h"
 
-void get_packets(char *port, FILE *fp); 
+void get_packets(char *port, FILE *fp, FILE *logp); 
 int sock_init(char *port);
 
 #endif
