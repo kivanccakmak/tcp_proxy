@@ -16,7 +16,4 @@
 #include <poll.h>
 #include "../network/network.h"
 
-void get_packets(char *port, FILE *fp, FILE *logp); 
-int sock_init(char *port);
-
 #endif
