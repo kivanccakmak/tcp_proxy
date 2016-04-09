@@ -2,6 +2,7 @@
 **/*.pcap
 rx_proxy/sample
 rx_proxy/test/rx_proxy_test
+code_structure.pdf
 sniffs/*
 **/atom
 stream/stream
