@@ -7,14 +7,16 @@ static void forward_data(fqueue_t* fq, int pack_cnt);
 static void forward_loop(pool_t *pl, fqueue_t *fq);
 
 /**
- * @brief gets and  initializes pool_t and fqueue_t 
- * structs, then starts forward loop
+ * @brief enabled by boss_server module. 
+ * gets and  initializes pool_t and fqueue_t 
+ * structs, then starts forward loop.
  *
  * @param args
  *
  * @return 
  */
-void *wait2forward(void *args) {
+void *wait2forward(void *args) 
+{
     int sockfd;
     char *dest_ip = NULL, *dest_port = NULL;
     struct sockaddr_in server;
@@ -59,8 +61,8 @@ void *wait2forward(void *args) {
  * @param pl
  * @param fq
  */
-static void forward_loop(pool_t *pl, fqueue_t *fq) {
-
+static void forward_loop(pool_t *pl, fqueue_t *fq) 
+{
     struct timespec to;
     int pack_cnt;
 
@@ -78,7 +80,6 @@ static void forward_loop(pool_t *pl, fqueue_t *fq) {
         } else {
             pthread_mutex_unlock(&pl->lock);
         }
-
     }
 }
 
@@ -110,7 +111,10 @@ static void forward_data(fqueue_t* fq, int pack_cnt)
 }
 
 /**
- * @brief 
+ * @brief checks whether consecutively ordered packets 
+ * packets arrived. if so, puts them into fq->buffer,
+ * otherwise, puts them back to pq.
+ * 
  *
  * @param pq
  * @param fq

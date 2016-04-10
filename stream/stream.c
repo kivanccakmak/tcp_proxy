@@ -25,7 +25,8 @@ int main(int argc, char *argv[])
 #endif
 
 /**
- * @brief 
+ * @brief read file and stream 
+ * to ip:port node
  *
  * @param[in] ip_addr
  * @param[in] port

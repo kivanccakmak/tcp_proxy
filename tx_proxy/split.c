@@ -152,8 +152,8 @@ static void *run_controller(void *args)
 
 /**
  * @brief Sinlge TCP connection thread
- * that gets raw data from netfilter
- * queue and passes towards end destination
+ * that gets raw data buffer and passes 
+ * towards end destination.
  *
  * @param args
  *
@@ -383,9 +383,9 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
 
 
 /**
- * @brief payload hijaker thread that
- * gets data from nfqueue and puts into
- * proxy buffer 
+ * @brief initialize socket file descriptor
+ * to get data from netfilter, then calls
+ * split_loop().
  *
  * @param args
  *
@@ -443,9 +443,9 @@ static void *get_payload(void *args)
     return NULL;
 }
 
-
 /**
- * @brief 
+ * @brief gets hijacked data from netfilter,  
+ * and calls add2buff().
  *
  * @param sockfd to get data from nfqueue.
  * @param buff buffer of transmit proxy,
@@ -510,7 +510,7 @@ CONN_CLOSE:
 /**
  * @brief adds proxied payload to local 
  * buffer and updates count variables 
- * of proxy_buff pointer
+ * of proxy_buff 
  *
  * @param[out] buff
  * @param[in] raw_buf
@@ -557,7 +557,8 @@ static int add2buff(proxy_buff *buff, char *raw_buf,
 }
 
 /**
- * @brief  
+ * @brief set socket file descriptor
+ * to forward data through receiver proxy.
  *
  * @param[in] dest_ip
  * @param[in] dest_port
@@ -587,6 +588,16 @@ static int set_tx_sock(char *dest_ip, char *dest_port)
 
 }
 
+/**
+ * @brief  
+ *
+ * @param qh
+ * @param nfmsg
+ * @param nfa
+ * @param data
+ *
+ * @return 
+ */
 static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data) 
 {

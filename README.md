@@ -1,60 +1,23 @@
-Intro Goes Here.
+1. **Problem Statement:** Additional Increase Multiplicative Decrease(AIMD) approach of Congestion Control(CN) algorithms in 
+Transmission Control Protocol(TCP) suffers when multiple packet losses exists in the medium. 
 
-1. **Problem Statement:** Additional Increase Multiplicative Decrease(AIMD) approach of Congestion Control(CN) algorithms in Transmission Control Protocol(TCP) suffers when instantenous changes exist in transmission medium. Distributed Control Function(DCF) of IEEE 802.11 protocol allows stations to access channel when medium is empty.
-
-when side-band interference exists. 
-2. **Solution:** Be aware side-band interferance, manage multiple TCP connections.
-3. **How is it so:** Pair Proxy. One of them gets packets from source, splits TCP
-connection in between source and receiver. Consequently, checks side-band interference
-and opens/closes multiple TCP connections to pass proxied data towards second (companion) device. 
-Then, second device demultiplexes data coming from multiple TCP connections and passes towards
-original destination.
+2. **Solution:** Proxy real connection and manage multiple TCP connections in between two nodes of backbone.
+3. **How is it so:** Pair proxy. One of them(transmitter proxy) splits TCP connection in between the original source and receiver. 
+Consequently passes hijacked data to -which is his collegue- second node(receiver proxy) via multiple TCP connections. Then, second 
+node demultiplexes incoming data and finally passes towards the original destination.
 
 # Proxy Mechanism 
 
+![] (/home/kivanc/workspace/tcp_proxy/figs/topo.bmp)
 
-![Caption Text] (/home/kivi/workspace/tcp_proxy/relay/figs/proxy_picture.bmp)
-
-iptables and netfilter libraries used.
-netfilter provides getting packets from
-kernel space to user space, then we pass
-this packets to another receiver with multiple
-TCP connections.
+brctl is used to bridge multiple network interfaces of proxy nodes. iptables is used to define routing rules.
+netfilter library is used to get hijacked TCP packets from kernel space to user space, which would then be passed
+to second proxy node via multiple connections.
 
 # Packet Reordering
 
-![Caption Text] (/home/kivi/workspace/tcp_proxy/relay/figs/transmitter_proxy.bmp)
+![] (/home/kivanc/workspace/tcp_proxy/figs/encaps.bmp)
 
-
-![Caption Text] (/home/kivi/workspace/tcp_proxy/relay/figs/receiver_proxy.bmp)
-
-Packets multiplexed with multiple TCP connections.
-Receiver might not get them sequentially due to 
-characteristic of Wireless Channel. We add  
-our own headers to TCP packets, which are common
-sequence numbers of multiple TCP connections.
-
-## Encapsulation and Decapsulation
-
-We encapsulate TCP packet with another sequence number.
-Receiver side of proxy decapsulates it, then reorders.
-
-### Reordering Logic
-
-Each receiver has temporariy buffer, and queue has sequential
-buffer. If one of the receiver gets sequentially expected 
-packet, he adds it into queue and wakes queue up. Then, 
-queue passes data to end-destination.
-
-# Multiple TCP Connection Usage
-
-Add sniffer device into setup. Get interference statistics
-by sniffing via tcpdump and get instantenous statistics
-from it. Then, decide to add or remove TCP connections
-from this statistics.
-
-## Used Algorithm
-
-Whenever interferance increases, start to close TCP connections.
-Whenever interferance decreases, initiate TCP connections.
-
+Second node receives packets from multiple connections. Those may not arrive sequentially due to losses in the medium. 
+For this reason, we add our own headers to TCP packets in between pair proxy nodes, which are joint sequence numbers of 
+multiple TCP connections.

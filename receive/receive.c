@@ -82,7 +82,8 @@ static int sock_init(char *port)
 }
 
 /**
- * @brief 
+ * @brief receives data and writes onto
+ * file
  *
  * @param[in] pfd
  * @param[in] sockfd
@@ -148,8 +149,8 @@ CLOSE_CONN:
 }
 
 /**
- * @brief receive packets and
- * records them into file
+ * @brief set receiving socket file 
+ * descriptor and enters to recv_loop
  *
  * @param[in] port
  * @param[in] fp
@@ -180,5 +181,4 @@ void get_packets(char *port, FILE *fp, FILE *logp)
     pfd.events = POLLIN;
 
     recv_loop(&pfd, sockfd, fp, logp);
-
 }

@@ -17,14 +17,6 @@
 #include "pqueue.h"
 #include "../network/network.h"
 
-
-/**
- * @brief receiver chain thread
- *
- * @param args
- *
- * @return 
- */
 void *rx_chain(void *args);
 
 #endif

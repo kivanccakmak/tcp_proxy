@@ -25,8 +25,6 @@
 
 #define CLOSE_CONN -1
 
-
-
 /**
  * @brief buffers sequentially ordered 
  * data from receptor thread, 

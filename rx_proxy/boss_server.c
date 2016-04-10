@@ -84,7 +84,7 @@ pool_t* pool_init()
   * loop
   *
   * @param[in] server_port
-  * @param[out] queue
+  * @param[in] pl
   */
 void server_start(char* server_port, pool_t *pl)
 {
@@ -173,9 +173,7 @@ static void accept_loop(int sockfd, pool_t* pl)
 }
 
 /**
- * @brief 
- *
- * Initialize sigaction to wait
+ * @brief  Initialize sigaction to wait
  * incoming connections.
  *
  * @return 
