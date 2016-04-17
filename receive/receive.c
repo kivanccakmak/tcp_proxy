@@ -10,25 +10,60 @@ static int sock_init(char *port);
 #ifdef RECV
 int main(int argc, char *argv[]) 
 {
-    if (argc != 4) {
-        printf("Wrong usage\n");
-        printf("%s port_number output_file log_file\n", argv[0]);
-        return 0;
-    }
-
-    char *port;
-    char *output;
-    char *log_file;
+    const char *port, *output, *log_file;
     FILE *fp, *logp;
 
-    port = argv[1];
-    output = argv[2];
-    log_file = argv[3];
+    if (argc == 4) {
+        port = argv[1];
+        output = argv[2];
+        log_file = argv[3];
+    }
+
+    #ifdef CONF_ENABLE
+    if (argc == 1) {
+        config_t cfg;
+        config_setting_t *setting;
+        char *config_file = "../network/network.conf";
+        config_init(&cfg);
+        if (!config_read_file(&cfg, config_file)) {
+            printf("\n%s:%d - %s", config_error_file(&cfg), 
+                    config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            return -1;
+        }
+        setting = config_lookup(&cfg, "dest");
+        if (setting != NULL) {
+            if (config_setting_lookup_string(setting, "recv_port", &port)) {
+                printf("\n recv_port: %s\n", port);
+            } else {
+                printf("receiving port is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "out", &output)) {
+                printf("\n output: %s\n", output);
+            } else {
+                printf("output file is not configured \n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "log", &log_file)) {
+                printf("\n log file: %s\n", log_file);
+            } else {
+                printf("log file is not configured \n");
+                return -1;
+            }
+        } else {
+            printf("no configuration for receive\n");
+            return -1;
+        }
+    }
+    #endif
+
+    /*printf("Wrong usage\n");*/
+    /*printf("%s port_number output_file log_file\n", argv[0]);*/
 
     fp = fopen(output, "a");
     logp = fopen(log_file, "a");
-
-    get_packets(port, fp, logp);
+    get_packets((char *)port, fp, logp);
     return 0;
 }
 #endif

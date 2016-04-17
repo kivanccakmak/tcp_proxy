@@ -1,26 +1,61 @@
 #include "stream.h"
 
-static void stream(char *ip_addr, char *port,
-        FILE *fp);
+static void stream(char *ip_addr, char *port, FILE *fp);
 
 #ifdef STREAM
 int main(int argc, char *argv[]) 
 {
-    if (argc != 4) {
-        printf("Wrong Usage\n");
-        printf("%s dest_ip dest_port file_name\n", argv[0]);
-        return 0;
-    }
-
-    char *ip_addr, *port, *fname;
+    const char *ip_addr, *port, *fname;
     FILE *fp;
+
+    if (argc == 4) {
+        ip_addr = argv[1];
+        port = argv[2];
+        fname = argv[3];
+    }
     
-    ip_addr = argv[1];
-    port = argv[2];
-    fname = argv[3];
+    #ifdef CONF_ENABLE
+    if (argc == 1) {
+        config_t cfg;
+        config_setting_t *setting;
+        char *config_file = "../network/network.conf";
+        config_init(&cfg);
+        if (!config_read_file(&cfg, config_file)) {
+            printf("\n%s:%d - %s", config_error_file(&cfg), 
+                    config_error_line(&cfg),
+                    config_error_text(&cfg));
+            config_destroy(&cfg);
+            return -1;
+        }
+        setting = config_lookup(&cfg, "stream");
+        if (setting != NULL) {
+            if (config_setting_lookup_string(setting, "dest_ip", &ip_addr)) {
+                printf("\n dest_ip: %s\n", ip_addr);
+            } else {
+                printf("destination ip is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "dest_port", &port)) {
+                printf("\n dest_port: %s\n", port);
+            } else {
+                printf("destination port is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "file_name", &fname)) {
+                printf("\n file_name: %s\n", fname);
+            } else {
+                printf("local file is not configured\n");
+                return -1;
+            }
+        } else {
+            printf("no configuration for streamer\n");
+            return -1;
+        }
+    }
+    #endif
 
     fp = fopen(fname, "a+");
-    stream(ip_addr, port, fp);
+    stream((char*) ip_addr, (char*) port, fp);
 }
 #endif
 

@@ -1,16 +1,22 @@
 GCC = gcc
+TARGET = receive
+TARGET_ARGS = receive_args
+SRC = receive.c
 
 PORT = 5050 
+OUT = output.txt
+LOG = out.log
 
-RECV_TARGET = receive
-RECV_SRC = receive.c
-OUTPUT = output.txt
+default: all
 
-LOG_FILE = out.log
+all: $(TARGET)
 
-$(RECV_TARGET): $(RECV_SRC)
-	$(GCC) $(RECV_SRC) -o $(RECV_TARGET) -DRECV
-	./$(RECV_TARGET) $(PORT) $(OUTPUT) $(LOG_FILE)
+$(TARGET): $(SRC) 
+	$(GCC) $(SRC) -o $(TARGET) -lconfig -DRECV -DCONF_ENABLE
+
+$(TARGET_ARGS): $(SRC)
+	$(GCC) $(SRC) -o $(TARGET_ARGS) -DRECV
+	./$(TARGET_ARGS) $(PORT) $(OUT) $(LOG)
 clean:
-	rm -rf $(RECV_TARGET) $(OUTPUT) $(LOG_FILE)
+	rm -rf $(TARGET) $(TARGET_ARGS) $(OUT) $(OUT)
 

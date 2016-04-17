@@ -14,6 +14,7 @@
 #include <netdb.h>
 #include <stdbool.h>
 #include <poll.h>
+#include <libconfig.h>
 #include "../network/network.h"
 
 #endif
