@@ -242,19 +242,19 @@ void get_packets(char *port, FILE *fp, FILE *logp)
 static void eval_config_item(char const *token,
         char const *value, struct arg_configer *arg_conf) {
     if (!strcmp(token, "port")) {
-        strncpy(arg_conf->port, value, (int) sizeof(value)); 
+        strcpy(arg_conf->port, value); 
         printf("arg_conf->port: %s\n", arg_conf->port);
         return;
     }
 
     if (!strcmp(token, "output")) {
-        strncpy(arg_conf->output, value, (int) sizeof(value));
+        strcpy(arg_conf->output, value);
         printf("arg_conf->output: %s\n", arg_conf->output);
         return;
     }
 
     if (!strcmp(token, "log_file")) {
-        strncpy(arg_conf->log_file, value, (int) sizeof(value));
+        strcpy(arg_conf->log_file, value);
         printf("arg_conf->log_file: %s\n", arg_conf->log_file);
         return;
     }

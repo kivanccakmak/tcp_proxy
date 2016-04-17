@@ -2,6 +2,11 @@
 
 static void stream(char *ip_addr, char *port, FILE *fp);
 
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf); 
+
+static int num_options = 3;
+
 #ifdef STREAM
 int main(int argc, char *argv[]) 
 {
@@ -9,9 +14,28 @@ int main(int argc, char *argv[])
     FILE *fp;
 
     if (argc == 4) {
-        ip_addr = argv[1];
-        port = argv[2];
-        fname = argv[3];
+        int i = 0, c = 0, option_index = 0;
+        struct arg_configer arg_conf;
+        for (;;) {
+            c = getopt_long(argc, argv, "",
+                    long_options, &option_index);
+
+            if (c == -1)
+                break;
+
+            if (c == '?' || c == ':')
+                exit(1);
+
+            for (i = 0; i < num_options; i++) {
+                if (long_options[i].val == c) {
+                    eval_config_item(long_options[i].name,
+                            optarg, &arg_conf);
+                }
+            }
+        }
+        ip_addr = arg_conf.ip_addr;
+        port = arg_conf.port;
+        fname = arg_conf.fname;
     }
     
     #ifdef CONF_ENABLE
@@ -115,3 +139,24 @@ static void stream(char *ip_addr, char *port, FILE *fp)
         temp_count = 0;
     }
 } 
+
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf) {
+    if (!strcmp(token, "ip_addr")) {
+        strcpy(arg_conf->ip_addr, value);
+        printf("arg_conf->ip_addr: %s\n", arg_conf->ip_addr);
+        return;
+    }
+
+    if (!strcmp(token, "port")) {
+        strcpy(arg_conf->port, value);
+        printf("arg_conf->port: %s\n", arg_conf->port);
+        return;
+    }
+
+    if (!strcmp(token, "fname")) {
+        strcpy(arg_conf->fname, value);
+        printf("arg_conf->log_file: %s\n", arg_conf->fname);
+        return;
+    }
+}
