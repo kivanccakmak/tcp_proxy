@@ -7,16 +7,40 @@ static void get_packets(char *port, FILE *fp, FILE *logp);
 
 static int sock_init(char *port);
 
+static const int num_options = 3;
+
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf); 
+
 #ifdef RECV
-int main(int argc, char *argv[]) 
+int main(int argc, char **argv) 
 {
     const char *port, *output, *log_file;
     FILE *fp, *logp;
 
     if (argc == 4) {
-        port = argv[1];
-        output = argv[2];
-        log_file = argv[3];
+        int c = 0, i, option_index = 0;
+        struct arg_configer arg_conf;
+        for(;;) {
+            c = getopt_long(argc, argv, "",
+                    long_options, &option_index);
+
+            if (c == -1)
+                break;
+
+            if (c == '?' || c == ':')
+                exit(1);
+
+            for (i = 0; i < num_options; i++) {
+                if (long_options[i].val == c) {
+                    eval_config_item(long_options[i].name, optarg,
+                            &arg_conf);
+                }
+            }
+        }
+        port = arg_conf.port;
+        output = arg_conf.output;
+        log_file = arg_conf.log_file;
     }
 
     #ifdef CONF_ENABLE
@@ -57,9 +81,6 @@ int main(int argc, char *argv[])
         }
     }
     #endif
-
-    /*printf("Wrong usage\n");*/
-    /*printf("%s port_number output_file log_file\n", argv[0]);*/
 
     fp = fopen(output, "a");
     logp = fopen(log_file, "a");
@@ -216,4 +237,25 @@ void get_packets(char *port, FILE *fp, FILE *logp)
     pfd.events = POLLIN;
 
     recv_loop(&pfd, sockfd, fp, logp);
+}
+
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf) {
+    if (!strcmp(token, "port")) {
+        strncpy(arg_conf->port, value, (int) sizeof(value)); 
+        printf("arg_conf->port: %s\n", arg_conf->port);
+        return;
+    }
+
+    if (!strcmp(token, "output")) {
+        strncpy(arg_conf->output, value, (int) sizeof(value));
+        printf("arg_conf->output: %s\n", arg_conf->output);
+        return;
+    }
+
+    if (!strcmp(token, "log_file")) {
+        strncpy(arg_conf->log_file, value, (int) sizeof(value));
+        printf("arg_conf->log_file: %s\n", arg_conf->log_file);
+        return;
+    }
 }
