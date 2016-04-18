@@ -16,7 +16,6 @@ $(TARGET): $(SRC)
 
 $(TARGET_ARGS): $(SRC)
 	$(GCC) $(SRC) -o $(TARGET_ARGS) -DRECV
-	./$(TARGET_ARGS) $(PORT) $(OUT) $(LOG)
+
 clean:
 	rm -rf $(TARGET) $(TARGET_ARGS) $(OUT) $(OUT)
-

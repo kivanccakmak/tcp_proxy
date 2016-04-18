@@ -36,6 +36,8 @@ relay/debug_boss_rx
 **/*.log
 receive/receive_args
 
+rx_proxy/proxy_rx_args
+
 #PEPSAL related
 **.Po
 **.log
