@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <assert.h>
+#include <libconfig.h>
 #include "time.h"
 
 #include "forward.h"
