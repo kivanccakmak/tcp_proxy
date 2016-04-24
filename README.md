@@ -6,7 +6,7 @@ Transmission Control Protocol(TCP) suffers when multiple packet losses exists in
 Consequently passes hijacked data to -which is his collegue- second node(receiver proxy) via multiple TCP connections. Then, second 
 node demultiplexes incoming data and finally passes towards the original destination.
 
-![] (/home/kivanc/workspace/tcp_proxy/figs/proxy_topo.bmp)
+![] (figs/proxy_topo.bmp)
 
 ## brctl usage
 brctl is used to bridge multiple network interfaces of both proxy nodes. 
@@ -34,7 +34,7 @@ to second proxy node via multiple connections.
 
 ## packet reordering 
 
-![] (/home/kivanc/workspace/tcp_proxy/figs/encaps.bmp)
+![] (figs/encaps.bmp)
 
 Second node receives packets from multiple connections. Those may not arrive sequentially due to losses in the medium. 
 For this reason, we add our own headers to TCP packets in between pair proxy nodes, which are joint sequence numbers of 
