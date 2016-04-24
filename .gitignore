@@ -46,7 +46,6 @@ rx_proxy/proxy_rx_args
 pepsal-2.0.1/src/pepsal
 
 **/doxygen
-**/figs
 **/fork_trials
 **/nfq_play
 **/thread_trials
