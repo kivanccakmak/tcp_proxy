@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     if (argc == 1) {
         config_t cfg;
         config_setting_t *setting;
-        char *config_file = "../network/network.conf";
+        char *config_file = "../network.conf";
         config_init(&cfg);
         if (!config_read_file(&cfg, config_file)) {
             printf("\n%s:%d - %s", config_error_file(&cfg), 
