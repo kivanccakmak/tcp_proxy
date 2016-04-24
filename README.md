@@ -9,7 +9,7 @@ node demultiplexes incoming data and finally passes towards the original destina
 ![] (figs/proxy_topo.bmp)
 
 ## brctl usage
-brctl is used to bridge multiple network interfaces of both proxy nodes. 
+brctl should be used to bridge multiple network interfaces of both proxy nodes. 
 
 * `sudo ifconfig eth0 down`
 * `sudo ifconfig eth1 down`
@@ -22,7 +22,7 @@ brctl is used to bridge multiple network interfaces of both proxy nodes.
 * `sudo ifconfig br0 192.168.2.201`
 
 ## iptables usage
-iptables is used at transmitter proxy to define routing rules.
+iptables should be used at transmitter proxy to define routing rules.
 
 * `iptables -t mangle -F`
 * `iptables -t nat -F`
