@@ -1,46 +1,111 @@
 #include "boss_server.h"
 
+struct arg_configer{
+    char dest_ip[IP_CHAR_MAX];
+    char dest_port[PORT_MAX_CHAR];
+    char port[PORT_MAX_CHAR];
+};
+
+static struct option long_options[] = {
+    {"port", required_argument, NULL, 'A'},
+    {"dest_port", required_argument, NULL, 'B'},
+    {"dest_ip", required_argument, NULL, 'C'}
+};
+
 static void sigchld_handler(int s);
 
 static struct sigaction sig_init();
 
 static void accept_loop(int sockfd, pool_t* pl); 
 
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf);
+
+static const int num_options = 3;
+
 #ifdef RX_PROXY
-int main(int argc, char * argv[])
+int main(int argc, char ** argv)
 {
-    if (argc != 4){
-        printf("usage: %s SERVER_PORT DEST_IP DEST_PORT  \n", argv[0]);
-        printf("ex: %s 5050 192.168.3.3 4040 \n", argv[0]);
-        return 0;
+    const char *dest_ip, *dest_port, *port;
+    if (argc == 4) {
+        int c = 0, i, option_index = 0;
+        struct arg_configer arg_conf;
+        for(;;) {
+            c = getopt_long(argc, argv, "",
+                    long_options, &option_index);
+            if (c == -1) {
+                break;
+            }
+
+            if (c == '?' || c == ':')
+                exit(1);
+
+            for (i = 0; i < num_options; i++) {
+                if (long_options[i].val == c) {
+                    eval_config_item(long_options[i].name,
+                            optarg, &arg_conf);
+                }
+            }
+        }
+        port = arg_conf.port;
+        dest_ip = arg_conf.dest_ip;
+        dest_port = arg_conf.dest_port;
     }
 
-    char *dest_ip, *dest_port, *server_port;
+    #ifdef CONF_ENABLE
+    if (argc == 1) {
+        config_t cfg;
+        config_setting_t *setting;
+        char *config_file = "../network.conf";
+        config_init(&cfg);
+        if (!config_read_file(&cfg, config_file)) {
+            printf("\n%s:%d - %s", config_error_file(&cfg),
+                    config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            return -1;
+        }
+        setting = config_lookup(&cfg, "rx_proxy");
+        if (setting != NULL) {
+            if (config_setting_lookup_string(setting, "recv_port", &port)) {
+                printf("\n recv_port: %s\n", port);
+            } else {
+                printf("receiving port of rx_proxy is not configured \n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "dest_port", &dest_port)) {
+                printf("\n dest_port: %s\n", dest_port);
+            } else {
+                printf("port of agnostic end destination is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "dest_ip", &dest_ip)) {
+                printf("\n dest_ip: %s\n", dest_ip);
+            } else {
+                printf("ip address of agnostic end destination is not configured\n");
+                return -1;
+            }
+        }
+    }
+    #endif
+
     pool_t *pl;
     queue_args_t *que_args;
     pthread_t que_id, serv_id;
-
     que_args = (queue_args_t *) 
         malloc(sizeof(queue_args_t));
-
-    server_port = argv[1];
-    dest_ip = argv[2];
-    dest_port = argv[3];
 
     pl = pool_init();
 
     que_args->pl = pl;
-    que_args->dest_ip = dest_ip;
-    que_args->dest_port = dest_port;
+    que_args->dest_ip = (char *) dest_ip;
+    que_args->dest_port = (char *) dest_port;
     
     pthread_create(&que_id, NULL, &wait2forward,
             (void*) que_args);
     sleep(3);
     
-    server_start(server_port, pl);
-
+    server_start((char*) port, pl);
     pthread_join(que_id, NULL);
-
     return 0;
 }
 #endif
@@ -169,6 +234,35 @@ static void accept_loop(int sockfd, pool_t* pl)
         thr_out = pthread_create(&t_id, NULL, &rx_chain, rx_args);
         if (thr_out < 0) 
             perror("could not create thread");
+    }
+}
+
+/**
+ * @brief sets checks argument variable key and 
+ * sets argument var config struct
+ *
+ * @param token[in]
+ * @param value[in]
+ * @param arg_conf[out]
+ */
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf) {
+    if (!strcmp(token, "port")) {
+        strcpy(arg_conf->port, value); 
+        printf("arg_conf->port: %s\n", arg_conf->port);
+        return;
+    }
+
+    if (!strcmp(token, "dest_port")) {
+        strcpy(arg_conf->dest_port, value);
+        printf("arg_conf->output: %s\n", arg_conf->dest_port);
+        return;
+    }
+
+    if (!strcmp(token, "dest_ip")) {
+        strcpy(arg_conf->dest_ip, value);
+        printf("arg_conf->log_file: %s\n", arg_conf->dest_ip);
+        return;
     }
 }
 

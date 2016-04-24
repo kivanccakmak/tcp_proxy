@@ -16,17 +16,13 @@ SRC = split.c
 DEP = ../network/network.c
 LIBS = -lnetfilter_queue -lnfnetlink -lpthread
 
-RUN = $(TARGET) $(LOCAL_PORT) $(RX_PROXY_IP) \
-	  $(RX_PROXY_PORT)
+default: all
 
-DBG_RUN = $(DBG_TARGET) $(LOCAL_PORT) $(RX_PROXY_IP)\
-		  $(RX_PROXY_PORT)
+all: $(TARGET)
 
 $(TARGET): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -DTX_PROXY
-	./$(RUN) 
-$(DBG_TARGET): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(DBG_TARGET) $(DEBUG_FLAG) $(LIBS) $(WALL) -DTX_PROXY
-	$(VALGRIND) $(LOG_FLAG)=$(SPLIT_LOG) $(LEAK_FLAG) ./$(DBG_RUN) 
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig -DTX_PROXY -DCONF_ENABLE
+$(TARGET_ARGS): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(LIBS) -DTX_PROXY
 clean:
-	rm -rf $(TARGET) $(DBG_TARGET)
+	rm -rf $(TARGET) $(TARGET_ARGS)

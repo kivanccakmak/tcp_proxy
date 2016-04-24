@@ -28,7 +28,6 @@ void *wait2forward(void *args)
     queue_args = (queue_args_t*) args;
     dest_ip = queue_args->dest_ip;
     dest_port = queue_args->dest_port;
-    printf("dest %s:%s\n", dest_ip, dest_port);
     
     // init receive socket
     server.sin_addr.s_addr = inet_addr(dest_ip);

@@ -16,6 +16,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <assert.h>
+#include <libconfig.h>
+#include <getopt.h>
 #include "time.h"
 
 #include "forward.h"
@@ -24,6 +26,10 @@
 #include "pqueue.h"
 
 #define CLOSE_CONN -1
+
+#define PATH_MAX 2048
+#define PORT_MAX_CHAR 50
+#define IP_CHAR_MAX 512
 
 /**
  * @brief buffers sequentially ordered 

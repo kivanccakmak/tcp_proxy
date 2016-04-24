@@ -2,6 +2,18 @@
 
 #define QUEUE_NUM 0 
 
+struct arg_configer{
+    char rx_proxy_ip[IP_CHAR_MAX];
+    char rx_proxy_port[PORT_MAX_CHAR];
+    char local_port[PORT_MAX_CHAR];
+};
+
+static struct option long_options[] = {
+    {"local_port", required_argument, NULL, 'A'},
+    {"rx_proxy_port", required_argument, NULL, 'B'},
+    {"rx_proxy_ip", required_argument, NULL, 'C'}
+};
+
 static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa,
         void *data);
@@ -33,29 +45,88 @@ static void *tx_chain(void *args);
 
 static void split_loop(int sockfd, proxy_buff *buff);
 
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf);
+
+static const int num_options = 3;
+
 #ifdef TX_PROXY
 int main(int argc, char *argv[])
 {
-
-    if (argc != 4) {
-        printf("wrong usage \n");
-        printf("%s local_port dest_ip dest_port\n", argv[0]);
-        return 0;
-    } 
-
     int ret;
-    char *dest_ip, *dest_port, *local_port;
     struct split_args *split = NULL;
     struct cb_cntrl_args *cntrl_args = NULL;
     pthread_t queuer_id, getter_id, controller_id;
+    
+    // local_port: get hijacked data from this port
+    // dest_ip, dest_port: send hijacked 
+    // data to there(rx_proxy)
+    const char *dest_ip, *dest_port, *local_port;
 
-    local_port = argv[1];
-    dest_ip = argv[2];
-    dest_port = argv[3];
+    // argv getter from terminal
+    if (argc == 4) {
+        int c = 0, i, option_index = 0;
+        struct arg_configer arg_conf;
+        for(;;) {
+            c = getopt_long(argc, argv, "",
+                    long_options, &option_index);
+            if (c == -1) 
+                break;
+            if (c == '?' || c == ':')
+                exit(1);
+            for (i = 0; i < num_options; i++) {
+                if (long_options[i].val == c) {
+                    eval_config_item(long_options[i].name,
+                            optarg, &arg_conf);
+                }
+            }
+        }
+        local_port = arg_conf.local_port;
+        dest_ip = arg_conf.rx_proxy_ip;
+        dest_port = arg_conf.rx_proxy_port;
+    }
+    
+    // no argv variable, parameters set from config file
+    #ifdef CONF_ENABLE
+    if (argc == 1) {
+        config_t cfg;
+        config_setting_t *setting;
+        char *config_file = "../network.conf";
+        config_init(&cfg);
+        if (!config_read_file(&cfg, config_file)) {
+            printf("\n%s:%d - %s", config_error_file(&cfg),
+                    config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            return -1;
+        }
+        setting = config_lookup(&cfg, "tx_proxy");
+        if (setting != NULL) {
+            if (config_setting_lookup_string(setting, "local_port", &local_port)) {
+                printf("\n local_port: %s\n", local_port);
+            } else {
+                printf("local port of tx_proxy is not configured \n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "rx_proxy_ip", &dest_ip)) {
+                printf("\n dest_ip: %s\n", dest_ip);
+            } else {
+                printf("ip address of rx_proxy is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "rx_proxy_port", &dest_port)) {
+                printf("\n dest_port: %s\n", dest_port);
+            } else {
+                printf("port of rx_proxy is not configured\n");
+                return -1;
+            }
+        }
+    }
+    #endif
 
-    split = set_split_args(local_port);
-    cntrl_args = set_controller_args(dest_ip,
-            dest_port, split->buff);
+
+    split = set_split_args((char *)local_port);
+    cntrl_args = set_controller_args((char *)dest_ip,
+            (char *)dest_port, split->buff);
 
     ret = pthread_create(&queuer_id, NULL, &queuer_loop, NULL);
     if (ret) {
@@ -632,4 +703,25 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh,
     return 0;
 }
 
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf)
+{
+    if (!strcmp(token, "local_port")) {
+        strcpy(arg_conf->local_port, value); 
+        printf("arg_conf->local_port: %s\n", arg_conf->local_port);
+        return;
+    }
+
+    if (!strcmp(token, "rx_proxy_port")) {
+        strcpy(arg_conf->rx_proxy_port, value);
+        printf("arg_conf->rx_proxy_port: %s\n", arg_conf->rx_proxy_port);
+        return;
+    }
+
+    if (!strcmp(token, "rx_proxy_ip")) {
+        strcpy(arg_conf->rx_proxy_ip, value);
+        printf("arg_conf->rx_proxy_ip: %s\n", arg_conf->rx_proxy_ip);
+        return;
+    }
+}
 

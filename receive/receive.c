@@ -7,28 +7,84 @@ static void get_packets(char *port, FILE *fp, FILE *logp);
 
 static int sock_init(char *port);
 
-#ifdef RECV
-int main(int argc, char *argv[]) 
-{
-    if (argc != 4) {
-        printf("Wrong usage\n");
-        printf("%s port_number output_file log_file\n", argv[0]);
-        return 0;
-    }
+static const int num_options = 3;
 
-    char *port;
-    char *output;
-    char *log_file;
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf); 
+
+#ifdef RECV
+int main(int argc, char **argv) 
+{
+    const char *port, *output, *log_file;
     FILE *fp, *logp;
 
-    port = argv[1];
-    output = argv[2];
-    log_file = argv[3];
+    if (argc == 4) {
+        int c = 0, i, option_index = 0;
+        struct arg_configer arg_conf;
+        for(;;) {
+            c = getopt_long(argc, argv, "",
+                    long_options, &option_index);
+
+            if (c == -1)
+                break;
+
+            if (c == '?' || c == ':')
+                exit(1);
+
+            for (i = 0; i < num_options; i++) {
+                if (long_options[i].val == c) {
+                    eval_config_item(long_options[i].name, optarg,
+                            &arg_conf);
+                }
+            }
+        }
+        port = arg_conf.port;
+        output = arg_conf.output;
+        log_file = arg_conf.log_file;
+    }
+
+    #ifdef CONF_ENABLE
+    if (argc == 1) {
+        config_t cfg;
+        config_setting_t *setting;
+        char *config_file = "../network.conf";
+        config_init(&cfg);
+        if (!config_read_file(&cfg, config_file)) {
+            printf("\n%s:%d - %s", config_error_file(&cfg), 
+                    config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            return -1;
+        }
+        setting = config_lookup(&cfg, "dest");
+        if (setting != NULL) {
+            if (config_setting_lookup_string(setting, "recv_port", &port)) {
+                printf("\n recv_port: %s\n", port);
+            } else {
+                printf("receiving port is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "out", &output)) {
+                printf("\n output: %s\n", output);
+            } else {
+                printf("output file is not configured \n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "log", &log_file)) {
+                printf("\n log file: %s\n", log_file);
+            } else {
+                printf("log file is not configured \n");
+                return -1;
+            }
+        } else {
+            printf("no configuration for receive\n");
+            return -1;
+        }
+    }
+    #endif
 
     fp = fopen(output, "a");
     logp = fopen(log_file, "a");
-
-    get_packets(port, fp, logp);
+    get_packets((char *)port, fp, logp);
     return 0;
 }
 #endif
@@ -181,4 +237,25 @@ void get_packets(char *port, FILE *fp, FILE *logp)
     pfd.events = POLLIN;
 
     recv_loop(&pfd, sockfd, fp, logp);
+}
+
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf) {
+    if (!strcmp(token, "port")) {
+        strcpy(arg_conf->port, value); 
+        printf("arg_conf->port: %s\n", arg_conf->port);
+        return;
+    }
+
+    if (!strcmp(token, "output")) {
+        strcpy(arg_conf->output, value);
+        printf("arg_conf->output: %s\n", arg_conf->output);
+        return;
+    }
+
+    if (!strcmp(token, "log_file")) {
+        strcpy(arg_conf->log_file, value);
+        printf("arg_conf->log_file: %s\n", arg_conf->log_file);
+        return;
+    }
 }
