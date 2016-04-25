@@ -8,8 +8,20 @@ node demultiplexes incoming data and finally passes towards the original destina
 
 ![] (figs/proxy_topo.bmp)
 
-## brctl usage
-brctl should be used to bridge multiple network interfaces of both proxy nodes. 
+# usage
+
+As illustrated above, we assume that the experiment needs 4 devices - and commands provided with IP addresses of figure.
+We also assume that proxy devices would have two different interfaces, one for getting incoming data and one for forwarding data.
+
+## configuration
+Connect devices as in topology figure and download copy repo to all of them. Consequently,
+if you use different ip addresses, change network.conf file, which is in root directory of repo. 
+
+### stream
+provide file to forward into stream device's stream/ directory, and update file\_name variable.
+
+### brctl usage
+Both of the proxy nodes should bridge multiple network interfaces via brctl.
 
 * `sudo ifconfig eth0 down`
 * `sudo ifconfig eth1 down`
@@ -21,23 +33,32 @@ brctl should be used to bridge multiple network interfaces of both proxy nodes.
 * `sudo ifconfig br0 up`
 * `sudo ifconfig br0 192.168.2.201`
 
-## iptables usage
-iptables should be used at transmitter proxy to define routing rules.
+### iptables usage
+Transmitter proxy should define routing rules via iptables.
 
 * `iptables -t mangle -F`
 * `iptables -t nat -F`
 * `iptables -t nat -I PREROUTING -p tcp -s 192.168.2.11 -j REDIRECT --to-port 5000`
 * `iptables -t mangle -I PREROUTING -i br0 -s 192.168.2.11 -p tcp --syn -j NFQUEUE --queue-num=0`
 
+### compile
+run **make** in root directory at each devices
+
+## working principles
+
+### tcp session hijacking
+
 netfilter library is used to get hijacked TCP packets from kernel space to user space, which would then be passed
 to second proxy node via multiple connections.
 
-## packet reordering 
+### packet reordering 
 
 ![] (figs/encaps.bmp)
 
 Second node receives packets from multiple connections. Those may not arrive sequentially due to losses in the medium. 
 For this reason, we add our own headers to TCP packets in between pair proxy nodes, which are joint sequence numbers of 
 multiple TCP connections.
+
+
 
 
