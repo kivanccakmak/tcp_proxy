@@ -16,12 +16,12 @@ below provided with ethernet interfaces(eth0, eth1) but those can be anything*.
 
 ### configuration
 Connect devices as in topology figure and copy repo to all of them. Consequently,
-if you use different ip addresses, change **network.conf** file, which is in root directory of repo. 
+if you use different ip addresses, __change **network.conf** file__, which is in root directory of repo. 
 
-* stream -> Agnostic Source
-* receive -> Agnostic Receiver
-* tx\_proxy -> Transmitter Proxy
-* rx\_proxy -> Receiver Proxy
+* ***stream*** -> Agnostic Source
+* ***receive*** -> Agnostic Receiver
+* ***tx\_proxy*** -> Transmitter Proxy
+* ***rx\_proxy*** -> Receiver Proxy
 
 #### add file 
 provide raw file to forward into stream/ directory of source device and set it's name 
