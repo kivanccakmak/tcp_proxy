@@ -16,7 +16,7 @@ below provided with ethernet interfaces(eth0, eth1) but those can be anything*.
 
 ### configuration
 Connect devices as in topology figure and copy repo to all of them. Consequently,
-if you use different ip addresses, __change **network.conf** file__, which is in root directory of repo. 
+if you use different ip addresses, __change__ __**network.conf**__ __file__, which is in root directory of repo. 
 
 * ***stream*** -> Agnostic Source
 * ***receive*** -> Agnostic Receiver
