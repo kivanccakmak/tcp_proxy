@@ -19,7 +19,7 @@ Connect devices as in topology figure and copy repo to all of them. Consequently
 if you use different ip addresses, change **network.conf** file, which is in root directory of repo. 
 
 * ***stream*** -> Agnostic Source
-* ***receive*** -> Agnostic Receiver
+* ***dest*** -> Agnostic Destination
 * ***tx\_proxy*** -> Transmitter Proxy
 * ***rx\_proxy*** -> Receiver Proxy
 
