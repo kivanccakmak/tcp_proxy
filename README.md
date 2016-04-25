@@ -10,6 +10,8 @@ node demultiplexes incoming data and finally passes towards the original destina
 
 # usage
 
+This code is for a bit messy setup, so if you aren't crazy for TCP session hijacking and performance enhancement, I advice you to pass. Otherwise, I strongly advice you to read all below!
+
 As illustrated above, we assume that the experiment needs **4** devices - *commands provided with IP addresses of figure*.
 We also assume that proxy devices have two different interfaces, one for getting incoming data and one for forwarding data - *commands
 below provided with ethernet interfaces(eth0, eth1) but those can be anything*.
@@ -25,10 +27,10 @@ if you use different ip addresses, change **network.conf** file, which is in roo
 
 #### add file 
 provide raw file to forward into stream/ directory of source device and set it's name 
-into file\_name variable in **network.conf**.
+into **file\_name** variable in **network.conf**.
 
 ### brctl usage
-Both of the proxy nodes should bridge multiple network interfaces via **brctl**.
+Both of the proxy nodes should bridge multiple network interfaces via **brctl**. Below, I provide commands for **tx\_proxy**, but it should be done for **rx\_proxy** as well.
 
 * `sudo ifconfig eth0 down`
 * `sudo ifconfig eth1 down`
@@ -49,7 +51,15 @@ Transmitter proxy should define routing rules via **iptables**.
 * `iptables -t mangle -I PREROUTING -i br0 -s 192.168.2.11 -p tcp --syn -j NFQUEUE --queue-num=0`
 
 ### compile
-run **make** in root directory at each devices
+run **make** in root directory at each devices.
+
+#### run
+It's better to use ***ssh*** to connect all devices. So, run binaries of devices respectively: 
+
+1. ./receive
+2. ./rx/_proxy
+3. sudo tx/_proxy
+4. ./stream
 
 ## working principles
 
