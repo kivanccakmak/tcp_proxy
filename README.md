@@ -26,7 +26,7 @@ if you use different ip addresses, change **network.conf** file, which is in roo
 * ***rx\_proxy*** -> Receiver Proxy
 
 #### add file 
-provide raw file to forward into stream/ directory of source device and set it's name 
+provide raw file to forward into **stream/** directory of source device and set it's name 
 into **file\_name** variable in **network.conf**.
 
 ### brctl usage
