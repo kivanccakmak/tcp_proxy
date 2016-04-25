@@ -10,19 +10,25 @@ node demultiplexes incoming data and finally passes towards the original destina
 
 # usage
 
-As illustrated above, we assume that the experiment needs 4 devices - *commands provided with IP addresses of figure*.
-We also assume that proxy devices would have two different interfaces, one for getting incoming data and one for forwarding data - *commands
-below provided with ethernet interfaces(eth0, eth1) but those can be anything, such as wlan0 etc*.
+As illustrated above, we assume that the experiment needs **4** devices - *commands provided with IP addresses of figure*.
+We also assume that proxy devices have two different interfaces, one for getting incoming data and one for forwarding data - *commands
+below provided with ethernet interfaces(eth0, eth1) but those can be anything*.
 
 ### configuration
 Connect devices as in topology figure and copy repo to all of them. Consequently,
 if you use different ip addresses, change **network.conf** file, which is in root directory of repo. 
 
-#### network.conf's stream
-provide file to forward into stream device's stream/ directory, and update file\_name variable.
+* stream -> Agnostic Source
+* receive -> Agnostic Receiver
+* tx\_proxy -> Transmitter Proxy
+* rx\_proxy -> Receiver Proxy
+
+#### add file 
+provide raw file to forward into stream/ directory of source device and set it's name 
+into file\_name variable in **network.conf**.
 
 ### brctl usage
-Both of the proxy nodes should bridge multiple network interfaces via brctl.
+Both of the proxy nodes should bridge multiple network interfaces via **brctl**.
 
 * `sudo ifconfig eth0 down`
 * `sudo ifconfig eth1 down`
@@ -35,7 +41,7 @@ Both of the proxy nodes should bridge multiple network interfaces via brctl.
 * `sudo ifconfig br0 192.168.2.201`
 
 ### iptables usage
-Transmitter proxy should define routing rules via iptables.
+Transmitter proxy should define routing rules via **iptables**.
 
 * `iptables -t mangle -F`
 * `iptables -t nat -F`
