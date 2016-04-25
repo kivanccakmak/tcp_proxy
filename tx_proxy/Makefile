@@ -1,28 +1,20 @@
 GCC = gcc
-WALL = -Wall
-DEBUG_FLAG = -ggdb
-LEAK_FLAG = --leak-check=full
-LOG_FLAG = --log-file
-VALGRIND = valgrind
-SPLIT_LOG = tx_proxy.log
+TARGET = proxy_tx # to run with config file 
+TARGET_ARGS = proxy_tx_args # to run with argument variables
 
-LOCAL_PORT = 5000
-RX_PROXY_IP = 192.168.2.12 
-RX_PROXY_PORT = 6000
-
-TARGET = proxy_tx 
-DBG_TARGET = debug_proxy_tx
 SRC = split.c 
 DEP = ../network/network.c
 LIBS = -lnetfilter_queue -lnfnetlink -lpthread
+
+CFLAGS = -DTX_PROXY
 
 default: all
 
 all: $(TARGET)
 
 $(TARGET): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig -DTX_PROXY -DCONF_ENABLE
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig $(CFLAGS) -DCONF_ENABLE
 $(TARGET_ARGS): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(LIBS) -DTX_PROXY
+	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(LIBS) $(CFLAGS)
 clean:
 	rm -rf $(TARGET) $(TARGET_ARGS)
