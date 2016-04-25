@@ -56,10 +56,10 @@ run **make** in root directory at each devices.
 #### run
 It's better to use ***ssh*** to connect all devices. So, run binaries of devices respectively: 
 
-1. ./receive
-2. ./rx/_proxy
-3. sudo tx/_proxy
-4. ./stream
+1. ***./receive***
+2. ***./rx\_proxy***
+3. ***sudo tx\_proxy***
+4. ***./stream***
 
 ## working principles
 
