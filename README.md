@@ -10,14 +10,15 @@ node demultiplexes incoming data and finally passes towards the original destina
 
 # usage
 
-As illustrated above, we assume that the experiment needs 4 devices - and commands provided with IP addresses of figure.
-We also assume that proxy devices would have two different interfaces, one for getting incoming data and one for forwarding data.
+As illustrated above, we assume that the experiment needs 4 devices - *commands provided with IP addresses of figure*.
+We also assume that proxy devices would have two different interfaces, one for getting incoming data and one for forwarding data - *commands
+below provided with ethernet interfaces(eth0, eth1) but those can be anything, such as wlan0 etc*.
 
-## configuration
-Connect devices as in topology figure and download copy repo to all of them. Consequently,
-if you use different ip addresses, change network.conf file, which is in root directory of repo. 
+### configuration
+Connect devices as in topology figure and copy repo to all of them. Consequently,
+if you use different ip addresses, change **network.conf** file, which is in root directory of repo. 
 
-### stream
+#### network.conf's stream
 provide file to forward into stream device's stream/ directory, and update file\_name variable.
 
 ### brctl usage
