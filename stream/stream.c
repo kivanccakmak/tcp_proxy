@@ -7,11 +7,19 @@ static void eval_config_item(char const *token,
 
 static int num_options = 3;
 
+static FILE *log_fp;
+
 #ifdef STREAM
 int main(int argc, char *argv[]) 
 {
     const char *ip_addr, *port, *fname;
     FILE *fp;
+
+    log_fp = fopen(STREAM_LOG, "w");
+    if (log_fp == NULL) {
+        perror("fopen: ");
+        exit(1);
+    }
 
     if (argc == 4) {
         int i = 0, c = 0, option_index = 0;
@@ -78,7 +86,9 @@ int main(int argc, char *argv[])
     }
     #endif
 
-    fp = fopen(fname, "a+");
+    fp = fopen(fname, "w");
+    LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);
+
     stream((char*) ip_addr, (char*) port, fp);
 }
 #endif
@@ -93,7 +103,7 @@ int main(int argc, char *argv[])
  */
 static void stream(char *ip_addr, char *port, FILE *fp)
 { 
-    int conn_res = 0, sockfd;
+    int ret, sockfd;
     int byte_count = 0, temp_count = 0, capacity = 0;
     int file_size = 0, amount = 0, residue = 0;
     char *thr_buff;
@@ -106,19 +116,16 @@ static void stream(char *ip_addr, char *port, FILE *fp)
 
     printf("socket initializing ...\n");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
 
     printf("connecting ...\n");
-    conn_res = connect(sockfd, (struct sockaddr*)&server,
+    ret = connect(sockfd, (struct sockaddr*)&server,
             sizeof(server));
-    printf("conn_res: %d\n", conn_res);
-    if (conn_res < 0) {
-        perror("connection failed. Error");
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, ret!=-1);
 
     thr_buff = (char *) malloc(BLOCKSIZE);
     file_size = get_file_size(fp);
 
-    printf("file_size: %d\n", file_size);
     while (byte_count < file_size) {
         if (byte_count + BLOCKSIZE < file_size) {
             read_file(fp, byte_count, byte_count + BLOCKSIZE, thr_buff);

@@ -19,7 +19,12 @@ int main(int argc, char **argv)
 {
     const char *port, *output, *log_file;
     FILE *fp, *res_fp;
-    log_fp = fopen(RECV_LOG, "a+"); 
+
+    log_fp = fopen(RECV_LOG, "w");
+    if (log_fp == NULL) {
+        perror("logfp: ");
+        exit(1);
+    }
 
     if (argc == 4) {
         int c = 0, i, option_index = 0;
@@ -85,10 +90,10 @@ int main(int argc, char **argv)
     }
     #endif
 
-    fp = fopen(output, "a");
+    fp = fopen(output, "w");
     LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);
 
-    res_fp = fopen(log_file, "a");
+    res_fp = fopen(log_file, "w");
     LOG_ASSERT(log_fp, LL_ERROR, res_fp!=NULL);
 
     get_packets((char *)port, fp, res_fp);
