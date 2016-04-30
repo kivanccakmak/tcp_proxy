@@ -1,7 +1,7 @@
 DOC_DIR     = doc
-DOXYGEN 	= doxygen
+DOXYGEN     = doxygen
 DOXYGEN_DIR = doxygen
-DOXYFILE 	= $(DOC_DIR)/doxygen.config
+DOXYFILE    = $(DOC_DIR)/doxygen.config
 FIGS_FILE   = doc/figs
 
 
