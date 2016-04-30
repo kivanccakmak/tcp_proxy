@@ -55,10 +55,10 @@ Transmitter proxy should define routing rules via **iptables**.
 * `iptables -t mangle -I PREROUTING -i br0 -s 192.168.2.11 -p tcp --syn -j NFQUEUE --queue-num=0`
 
 ### compile
-run **make** in root directory at each devices.
+`make`
 
 #### run
-It's better to use ***ssh*** to connect all devices. So, run binaries of devices respectively: 
+First, connect to all devices(via ssh or sth. else) Consequently, run binaries in devices respectively:
 
 1. ***./receive***
 2. ***./rx\_proxy***
@@ -82,4 +82,4 @@ multiple TCP connections.
 
 # doxygen
 
-**make doxygen**
+`make doxygen`
