@@ -50,6 +50,8 @@ static void eval_config_item(char const *token,
 
 static const int num_options = 3;
 
+static FILE *log_fp;
+
 #ifdef TX_PROXY
 int main(int argc, char *argv[])
 {
@@ -58,10 +60,15 @@ int main(int argc, char *argv[])
     struct cb_cntrl_args *cntrl_args = NULL;
     pthread_t queuer_id, getter_id, controller_id;
     
-    // local_port: get hijacked data from this port
-    // dest_ip, dest_port: send hijacked 
-    // data to there(rx_proxy)
+    // local_port: to get hijacked data
+    // dest_ip, dest_port: to send hijacked data
     const char *dest_ip, *dest_port, *local_port;
+
+    log_fp = fopen(TX_PROXY_LOG, "w");
+    if (log_fp == NULL) {
+        perror("fopen: ");
+        exit(1);
+    }
 
     // argv getter from terminal
     if (argc == 4) {
@@ -123,36 +130,20 @@ int main(int argc, char *argv[])
     }
     #endif
 
-
     split = set_split_args((char *)local_port);
     cntrl_args = set_controller_args((char *)dest_ip,
             (char *)dest_port, split->buff);
 
     ret = pthread_create(&queuer_id, NULL, &queuer_loop, NULL);
-    if (ret) {
-        printf("Failed to create queuer thread! [RET = %d]", ret);
-        exit(0);
-    } else {
-        printf("queuer thread initiated\n");
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     ret = pthread_create(&getter_id, NULL, &get_payload,
             (void *) split);
-    if (ret) {
-        printf("Failed to initiate payload getter. [RET = %d]", ret);
-        exit(0);
-    } else {
-        printf("payload thread initiated\n");
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     ret = pthread_create(&controller_id, NULL, &run_controller,
             (void *) cntrl_args);
-    if (ret) {
-        printf("Failed to initiate controller thread. [RET = %d]", ret);
-        exit(0);
-    } else {
-        printf("controller thread initiated\n");
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     pthread_join(controller_id, NULL);
     pthread_join(queuer_id, NULL);
@@ -173,7 +164,7 @@ int main(int argc, char *argv[])
  */
 static void *run_controller(void *args)
 {
-    int i = 0;
+    int ret, i = 0;
     struct cb_cntrl_args *cntrl_args = NULL;
     struct link **tcp_links = NULL;
     struct link *temp_link = NULL;
@@ -210,8 +201,9 @@ static void *run_controller(void *args)
         tx_args[i]->buff = cntrl_args->buff;
         tx_args[i]->tx_link = tcp_links[i];
         sleep(1);
-        pthread_create(&(thr_ids[i]), NULL, 
+        ret = pthread_create(&(thr_ids[i]), NULL, 
                 &tx_chain, (void*) tx_args[i]);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     }
 
     for (i = 0; i < cntrl_args->conn_number; i++)
@@ -230,13 +222,13 @@ static void *run_controller(void *args)
  *
  * @return 
  */
-static void *tx_chain(void *args) 
+static void *tx_chain(void *args)
 {
     struct cb_tx_args *tx_args = NULL;
     struct link *tx_link = NULL;
     encaps_packet_t packet;
     proxy_buff *buff;
-    int diff = 0, ind = 0, sent_count = 0, 
+    int ret, diff = 0, ind = 0, sent_count = 0, 
         numbytes = 0, total = 0, sockfd;
 
     tx_args = (struct cb_tx_args*)  malloc(sizeof(struct cb_tx_args));
@@ -248,14 +240,16 @@ static void *tx_chain(void *args)
     sockfd = tx_link->fd;
 
     while (true) {
-        pthread_mutex_lock(&buff->lock);
+        ret = pthread_mutex_lock(&buff->lock);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         diff = buff->set_ind - buff->get_ind;
         if (diff >= 0){ 
             ind = buff->get_ind;
             memcpy(packet.raw_packet, buff->buffer[ind], BLOCKSIZE);
             packet.seq = (unsigned short) buff->get_ind;
             buff->get_ind++;
-            pthread_mutex_unlock(&buff->lock);
+            ret = pthread_mutex_unlock(&buff->lock);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
             sent_count = 0;
             while (sent_count < (int) PACKET_SIZE) {
                 numbytes = send(sockfd, 
@@ -272,7 +266,8 @@ static void *tx_chain(void *args)
                 pthread_mutex_unlock(&buff->lock);
                 goto CONN_CLOSE;
             }
-            pthread_mutex_unlock(&buff->lock);
+            ret = pthread_mutex_unlock(&buff->lock);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
             sleep(1);
         }  
         pthread_mutex_lock(&tx_link->lock);
@@ -299,7 +294,7 @@ static void set_link(char *dest_ip, char *dest_port,
         struct link *tcp_link) 
 {
     struct sockaddr_in server;
-    int sockfd;
+    int ret, sockfd;
     socklen_t len = sizeof(server);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -307,28 +302,23 @@ static void set_link(char *dest_ip, char *dest_port,
     server.sin_addr.s_addr = inet_addr(dest_ip);
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(dest_port));
+    
+    ret = connect(sockfd, (struct sockaddr*)&server,
+            sizeof(server));
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    tcp_link->fd = sockfd;
 
-    printf("tcp link connecting ...\n");
-    if (connect(sockfd, (struct sockaddr*)&server,
-                sizeof(server)) > 0) {
-        perror("connection failed. Error");
-        exit(0);
-    } else {
-        tcp_link->fd = sockfd;
-    }
-
-    printf("connected ... \n");
-    if (getsockname(sockfd, (struct sockaddr*)&server,
-                &len) == -1) {
-        perror("getsockname");
-        exit(0);
-    } else {
-        tcp_link->src_port = ntohs(server.sin_port);
-    }
+    ret = getsockname(sockfd, (struct sockaddr*)&server,
+            &len);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    tcp_link->src_port = ntohs(server.sin_port);
 
     tcp_link->state = ACTIVE;
-    pthread_mutex_init(&tcp_link->lock, NULL);
-    pthread_cond_init(&tcp_link->cond, NULL);
+    ret = pthread_mutex_init(&tcp_link->lock, NULL);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
+    ret = pthread_cond_init(&tcp_link->cond, NULL);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 }
 
 /**
@@ -367,7 +357,7 @@ static struct cb_cntrl_args* set_controller_args(char *dest_ip,
  */
 static struct split_args* set_split_args(char *local_port)
 {
-    int i = 0;
+    int ret, i = 0;
     struct split_args *split = 
         (struct split_args*) malloc(sizeof(struct split_args));
 
@@ -384,7 +374,8 @@ static struct split_args* set_split_args(char *local_port)
     buff->capacity = INITIAL_CAPACITY;
     buff->buffer = (char **) 
         malloc(sizeof(char*) * buff->capacity);
-    pthread_mutex_init(&buff->lock, NULL);
+    ret = pthread_mutex_init(&buff->lock, NULL);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     for (i = 0; i < INITIAL_CAPACITY; i++) {
         buff->buffer[i] = (char *) malloc(BLOCKSIZE * sizeof(char));
     }
@@ -464,7 +455,7 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
  */
 static void *get_payload(void *args) 
 {
-    int yes = 1, rs_addr;
+    int ret, yes = 1;
     struct addrinfo hints;
     struct addrinfo *addr = NULL;
     struct split_args *split = NULL;
@@ -487,28 +478,20 @@ static void *get_payload(void *args)
 
     addr = (struct addrinfo*) 
         malloc(sizeof(struct addrinfo*));
-    rs_addr = getaddrinfo(NULL, local_port, &hints, &addr);
+    ret = getaddrinfo(NULL, local_port, &hints, &addr);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    LOG_ASSERT(log_fp, LL_ERROR, addr!=NULL);
 
-    if (addr == NULL) {
-        fprintf(stderr, "server: failed to bind \n");
-        exit(1);
-    }  
     sockfd = socket(addr->ai_family, addr->ai_socktype,
             addr->ai_protocol);
-    if (sockfd == -1) {
-        perror("socket:");
-        exit(0);
-    }
-    if (setsockopt(sockfd, SOL_SOCKET,
-                SO_REUSEADDR, &yes, sizeof(int)) != 0) {
-        perror("setsockopt: ");
-        exit(0);
-    }
-    if (bind(sockfd, addr->ai_addr, 
-                addr->ai_addrlen) == -1) {
-        close(sockfd);
-        perror("server: bind");
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
+    
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+            &yes, sizeof(int));
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
+    ret = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     split_loop(sockfd, buff);
     return NULL;
