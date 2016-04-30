@@ -13,8 +13,8 @@ DEP += forward.c \
        libpqueue/pqueue.c \
        ../commons/network/network.c
 
-LIBS = -lpthread \
-       -lm 
+LIBS += -lpthread \
+        -lm 
 
 CFLAGS = -DRX_PROXY
 
