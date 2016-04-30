@@ -10,9 +10,9 @@ SRC = split.c
 
 DEP = ../commons/network/network.c
 
-LIBS = -lnetfilter_queue \
-	   -lnfnetlink \
-	   -lpthread
+LIBS += -lnetfilter_queue \
+        -lnfnetlink \
+        -lpthread \
 
 CFLAGS = -DTX_PROXY
 

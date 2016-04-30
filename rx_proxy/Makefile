@@ -11,10 +11,10 @@ SRC = boss_server.c
 DEP += forward.c \
        link_receptor.c \
        libpqueue/pqueue.c \
-       ../commons/network/network.c
+       ../commons/network/network.c \
 
 LIBS += -lpthread \
-        -lm 
+        -lm \
 
 CFLAGS = -DRX_PROXY
 
