@@ -13,8 +13,8 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include "../file_read/file_read.h"
-#include "../network/network.h"
+#include "file_read/file_read.h"
+#include "../commons/network/network.h"
 
 #define PATH_MAX 2048
 #define IP_CHAR_MAX 512 

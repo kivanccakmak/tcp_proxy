@@ -1,8 +1,13 @@
 GCC = gcc
-TARGET = receive # to run with config file
-TARGET_ARGS = receive_args # to run with argument variables
+
+TARGET = receive
+# to run with config file
+
+TARGET_ARGS = receive_args
+# to run with argument variables
 
 SRC = receive.c
+
 CFLAGS = -DRECV
 
 OUT = output.txt

@@ -1,10 +1,18 @@
 GCC = gcc
-TARGET = proxy_tx # to run with config file 
-TARGET_ARGS = proxy_tx_args # to run with argument variables
+
+TARGET = proxy_tx
+# to run with config file
+
+TARGET_ARGS = proxy_tx_args
+# to run with argument variables
 
 SRC = split.c 
-DEP = ../network/network.c
-LIBS = -lnetfilter_queue -lnfnetlink -lpthread
+
+DEP = ../commons/network/network.c
+
+LIBS = -lnetfilter_queue \
+	   -lnfnetlink \
+	   -lpthread
 
 CFLAGS = -DTX_PROXY
 

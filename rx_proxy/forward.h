@@ -14,8 +14,8 @@
 #include <stdbool.h>
 #include "time.h"
 
-#include "../network/network.h"
-#include "pqueue.h"
+#include "../commons/network/network.h"
+#include "libpqueue/pqueue.h"
 #include "boss_server.h"
 
 #define INIT_QUEUE_SIZE sizeof(char*) * 1000

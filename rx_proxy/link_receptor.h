@@ -14,8 +14,8 @@
 #include <stdbool.h>
 
 #include "boss_server.h"
-#include "pqueue.h"
-#include "../network/network.h"
+#include "libpqueue/pqueue.h"
+#include "../commons/network/network.h"
 
 void *rx_chain(void *args);
 
