@@ -1,14 +1,25 @@
 GCC = gcc
+
 TARGET = stream
+# to run with config file
+
+TARGET_ARGS = stream_args
+# to run with argument variables
+
 SRC = stream.c
-DEP = ../file_read/file_read.c
 
-DEST_IP = 192.168.2.202
-DEST_PORT = 5050
-FILENAME = book.txt
+DEP = file_read/file_read.c
 
-$(TARGET): $(SRC) $(DEP) 
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) -DSTREAM
-	./$(TARGET) $(DEST_IP) $(DEST_PORT) $(FILENAME)
+CFLAGS = -DSTREAM
+
+default: all
+
+all: $(TARGET)
+
+$(TARGET): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) -lconfig $(CFLAGS) -DCONF_ENABLE
+
+$(TARGET_ARGS): $(SRC) $(DEP) 
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(CFLAGS)
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(TARGET_ARGS)

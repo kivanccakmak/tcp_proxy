@@ -16,16 +16,20 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <assert.h>
+#include <libconfig.h>
+#include <getopt.h>
 #include "time.h"
 
 #include "forward.h"
-#include "../network/network.h"
+#include "../commons/network/network.h"
 #include "link_receptor.h"
-#include "pqueue.h"
+#include "libpqueue/pqueue.h"
 
 #define CLOSE_CONN -1
 
-
+#define PATH_MAX 2048
+#define PORT_MAX_CHAR 50
+#define IP_CHAR_MAX 512
 
 /**
  * @brief buffers sequentially ordered 
@@ -108,7 +112,7 @@ typedef struct queue_args{
     char *dest_ip;
 } queue_args_t;
 
-void server_listen(char* server_port, pool_t* pool);
+void server_start(char* server_port, pool_t* pool);
 
 pool_t* pool_init(); 
 

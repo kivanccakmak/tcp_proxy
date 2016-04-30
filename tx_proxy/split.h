@@ -21,12 +21,14 @@
 #include <netinet/tcp.h>
 
 #include <errno.h>
+#include <getopt.h>
+#include <libconfig.h>
 
 #include <net/if.h>
 #include <linux/if_ether.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include "../network/network.h"
+#include "../commons/network/network.h"
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
@@ -36,6 +38,10 @@
 #define CLOSED -1
 #define ACTIVE 1
 #define PASSIVE 0
+
+#define PATH_MAX 2048
+#define PORT_MAX_CHAR 50
+#define IP_CHAR_MAX 512
 
 struct ipv4_packet{
     struct iphdr iph;

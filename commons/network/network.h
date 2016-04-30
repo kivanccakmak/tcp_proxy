@@ -18,8 +18,6 @@
  */
 #define BACKLOG 10
 
-#define DELAY_LIM 50
-
 /**
  * @brief
  *
@@ -44,4 +42,3 @@ uint32_t get_in_portnum(struct sockaddr *sa);
 void *get_in_ipaddr(struct sockaddr *sa);
 
 #endif
-

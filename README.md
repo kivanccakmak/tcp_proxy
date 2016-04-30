@@ -1,60 +1,81 @@
-Intro Goes Here.
+1. **Problem Statement:** Additional Increase Multiplicative Decrease(AIMD) approach of Congestion Control(CN) algorithms in 
+Transmission Control Protocol(TCP) suffers when multiple packet losses exists in the medium. 
 
-1. **Problem Statement:** Additional Increase Multiplicative Decrease(AIMD) approach of Congestion Control(CN) algorithms in Transmission Control Protocol(TCP) suffers when instantenous changes exist in transmission medium. Distributed Control Function(DCF) of IEEE 802.11 protocol allows stations to access channel when medium is empty.
+2. **Solution:** Proxy real connection and manage multiple TCP connections in between two nodes of backbone.
+3. **How is it so:** Pair proxy. One of them(transmitter proxy) splits TCP connection in between the original source and receiver. 
+Consequently passes hijacked data to -which is his collegue- second node(receiver proxy) via multiple TCP connections. Then, second 
+node demultiplexes incoming data and finally passes towards the original destination.
 
-when side-band interference exists. 
-2. **Solution:** Be aware side-band interferance, manage multiple TCP connections.
-3. **How is it so:** Pair Proxy. One of them gets packets from source, splits TCP
-connection in between source and receiver. Consequently, checks side-band interference
-and opens/closes multiple TCP connections to pass proxied data towards second (companion) device. 
-Then, second device demultiplexes data coming from multiple TCP connections and passes towards
-original destination.
+![] (figs/proxy_topo.bmp)
 
-# Proxy Mechanism 
+# usage
+
+This code is for a bit messy setup, so if you aren't crazy for TCP session hijacking and performance enhancement, I advice you to pass. Otherwise, I strongly advice you to read all below!
+
+As illustrated above, we assume that the experiment needs **4** devices - *commands provided with IP addresses of figure*.
+We also assume that proxy devices have two different interfaces, one for getting incoming data and one for forwarding data - *commands
+below provided with ethernet interfaces(eth0, eth1) but those can be anything*.
+
+### configuration
+Connect devices as in topology figure and copy repo to all of them. Consequently,
+if you use different ip addresses, change **network.conf** file, which is in root directory of repo. 
+
+* ***stream*** -> Agnostic Source
+* ***dest*** -> Agnostic Destination
+* ***tx\_proxy*** -> Transmitter Proxy
+* ***rx\_proxy*** -> Receiver Proxy
+
+#### add file 
+provide raw file to forward into **stream/** directory of source device and set it's name 
+into **file\_name** variable in **network.conf**.
+
+### brctl usage
+Both of the proxy nodes should bridge multiple network interfaces via **brctl**. Below, I provide commands for **tx\_proxy**, but it should be done for **rx\_proxy** as well.
+
+* `sudo ifconfig eth0 down`
+* `sudo ifconfig eth1 down`
+* `sudo brctl addbr br0`
+* `sudo brctl addif br0 eth0`
+* `sudo brctl addif br0 eth1 `
+* `sudo ifconfig eth0 up`
+* `sudo ifconfig eth1 up`
+* `sudo ifconfig br0 up`
+* `sudo ifconfig br0 192.168.2.201`
+
+### iptables usage
+Transmitter proxy should define routing rules via **iptables**.
+
+* `iptables -t mangle -F`
+* `iptables -t nat -F`
+* `iptables -t nat -I PREROUTING -p tcp -s 192.168.2.11 -j REDIRECT --to-port 5000`
+* `iptables -t mangle -I PREROUTING -i br0 -s 192.168.2.11 -p tcp --syn -j NFQUEUE --queue-num=0`
+
+### compile
+run **make** in root directory at each devices.
+
+#### run
+It's better to use ***ssh*** to connect all devices. So, run binaries of devices respectively: 
+
+1. ***./receive***
+2. ***./rx\_proxy***
+3. ***sudo tx\_proxy***
+4. ***./stream***
+
+## working principles
+
+### tcp session hijacking
+
+netfilter library is used to get hijacked TCP packets from kernel space to user space, which would then be passed
+to second proxy node via multiple connections.
+
+### packet reordering 
+
+![] (figs/encaps.bmp)
+
+Second node receives packets from multiple connections. Those may not arrive sequentially due to losses in the medium. 
+For this reason, we add our own headers to TCP packets in between pair proxy nodes, which are joint sequence numbers of 
+multiple TCP connections.
 
 
-![Caption Text] (/home/kivi/workspace/tcp_proxy/relay/figs/proxy_picture.bmp)
 
-iptables and netfilter libraries used.
-netfilter provides getting packets from
-kernel space to user space, then we pass
-this packets to another receiver with multiple
-TCP connections.
-
-# Packet Reordering
-
-![Caption Text] (/home/kivi/workspace/tcp_proxy/relay/figs/transmitter_proxy.bmp)
-
-
-![Caption Text] (/home/kivi/workspace/tcp_proxy/relay/figs/receiver_proxy.bmp)
-
-Packets multiplexed with multiple TCP connections.
-Receiver might not get them sequentially due to 
-characteristic of Wireless Channel. We add  
-our own headers to TCP packets, which are common
-sequence numbers of multiple TCP connections.
-
-## Encapsulation and Decapsulation
-
-We encapsulate TCP packet with another sequence number.
-Receiver side of proxy decapsulates it, then reorders.
-
-### Reordering Logic
-
-Each receiver has temporariy buffer, and queue has sequential
-buffer. If one of the receiver gets sequentially expected 
-packet, he adds it into queue and wakes queue up. Then, 
-queue passes data to end-destination.
-
-# Multiple TCP Connection Usage
-
-Add sniffer device into setup. Get interference statistics
-by sniffing via tcpdump and get instantenous statistics
-from it. Then, decide to add or remove TCP connections
-from this statistics.
-
-## Used Algorithm
-
-Whenever interferance increases, start to close TCP connections.
-Whenever interferance decreases, initiate TCP connections.
 

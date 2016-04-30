@@ -1,14 +1,26 @@
 GCC = gcc
 
-PORT = 5050 
+TARGET = receive
+# to run with config file
 
-RECV_TARGET = receive
-RECV_SRC = receive.c
-OUTPUT = output.txt
+TARGET_ARGS = receive_args
+# to run with argument variables
 
-$(RECV_TARGET): $(RECV_SRC)
-	$(GCC) $(RECV_SRC) -o $(RECV_TARGET) -DRECV
-	./$(RECV_TARGET) $(PORT) $(OUTPUT)
+SRC = receive.c
+
+CFLAGS = -DRECV
+
+OUT = output.txt
+
+default: all
+
+all: $(TARGET)
+
+$(TARGET): $(SRC) 
+	$(GCC) $(SRC) -o $(TARGET) -lconfig $(CFLAGS) -DCONF_ENABLE 
+
+$(TARGET_ARGS): $(SRC)
+	$(GCC) $(SRC) -o $(TARGET_ARGS) $(CFLAGS)
+
 clean:
-	rm -rf $(RECV_TARGET) $(OUTPUT)
-
+	rm -rf $(TARGET) $(TARGET_ARGS) $(OUT) $(OUT)

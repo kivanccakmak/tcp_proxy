@@ -2,6 +2,18 @@
 
 #define QUEUE_NUM 0 
 
+struct arg_configer{
+    char rx_proxy_ip[IP_CHAR_MAX];
+    char rx_proxy_port[PORT_MAX_CHAR];
+    char local_port[PORT_MAX_CHAR];
+};
+
+static struct option long_options[] = {
+    {"local_port", required_argument, NULL, 'A'},
+    {"rx_proxy_port", required_argument, NULL, 'B'},
+    {"rx_proxy_ip", required_argument, NULL, 'C'}
+};
+
 static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa,
         void *data);
@@ -33,29 +45,88 @@ static void *tx_chain(void *args);
 
 static void split_loop(int sockfd, proxy_buff *buff);
 
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf);
+
+static const int num_options = 3;
+
 #ifdef TX_PROXY
 int main(int argc, char *argv[])
 {
-
-    if (argc != 4) {
-        printf("wrong usage \n");
-        printf("%s local_port dest_ip dest_port\n", argv[0]);
-        return 0;
-    } 
-
     int ret;
-    char *dest_ip, *dest_port, *local_port;
     struct split_args *split = NULL;
     struct cb_cntrl_args *cntrl_args = NULL;
     pthread_t queuer_id, getter_id, controller_id;
+    
+    // local_port: get hijacked data from this port
+    // dest_ip, dest_port: send hijacked 
+    // data to there(rx_proxy)
+    const char *dest_ip, *dest_port, *local_port;
 
-    local_port = argv[1];
-    dest_ip = argv[2];
-    dest_port = argv[3];
+    // argv getter from terminal
+    if (argc == 4) {
+        int c = 0, i, option_index = 0;
+        struct arg_configer arg_conf;
+        for(;;) {
+            c = getopt_long(argc, argv, "",
+                    long_options, &option_index);
+            if (c == -1) 
+                break;
+            if (c == '?' || c == ':')
+                exit(1);
+            for (i = 0; i < num_options; i++) {
+                if (long_options[i].val == c) {
+                    eval_config_item(long_options[i].name,
+                            optarg, &arg_conf);
+                }
+            }
+        }
+        local_port = arg_conf.local_port;
+        dest_ip = arg_conf.rx_proxy_ip;
+        dest_port = arg_conf.rx_proxy_port;
+    }
+    
+    // no argv variable, parameters set from config file
+    #ifdef CONF_ENABLE
+    if (argc == 1) {
+        config_t cfg;
+        config_setting_t *setting;
+        char *config_file = "../network.conf";
+        config_init(&cfg);
+        if (!config_read_file(&cfg, config_file)) {
+            printf("\n%s:%d - %s", config_error_file(&cfg),
+                    config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            return -1;
+        }
+        setting = config_lookup(&cfg, "tx_proxy");
+        if (setting != NULL) {
+            if (config_setting_lookup_string(setting, "local_port", &local_port)) {
+                printf("\n local_port: %s\n", local_port);
+            } else {
+                printf("local port of tx_proxy is not configured \n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "rx_proxy_ip", &dest_ip)) {
+                printf("\n dest_ip: %s\n", dest_ip);
+            } else {
+                printf("ip address of rx_proxy is not configured\n");
+                return -1;
+            }
+            if (config_setting_lookup_string(setting, "rx_proxy_port", &dest_port)) {
+                printf("\n dest_port: %s\n", dest_port);
+            } else {
+                printf("port of rx_proxy is not configured\n");
+                return -1;
+            }
+        }
+    }
+    #endif
 
-    split = set_split_args(local_port);
-    cntrl_args = set_controller_args(dest_ip,
-            dest_port, split->buff);
+
+    split = set_split_args((char *)local_port);
+    cntrl_args = set_controller_args((char *)dest_ip,
+            (char *)dest_port, split->buff);
 
     ret = pthread_create(&queuer_id, NULL, &queuer_loop, NULL);
     if (ret) {
@@ -152,8 +223,8 @@ static void *run_controller(void *args)
 
 /**
  * @brief Sinlge TCP connection thread
- * that gets raw data from netfilter
- * queue and passes towards end destination
+ * that gets raw data buffer and passes 
+ * towards end destination.
  *
  * @param args
  *
@@ -383,9 +454,9 @@ static void *queuer_loop(void __attribute__((unused)) *unused)
 
 
 /**
- * @brief payload hijaker thread that
- * gets data from nfqueue and puts into
- * proxy buffer 
+ * @brief initialize socket file descriptor
+ * to get data from netfilter, then calls
+ * split_loop().
  *
  * @param args
  *
@@ -443,9 +514,9 @@ static void *get_payload(void *args)
     return NULL;
 }
 
-
 /**
- * @brief 
+ * @brief gets hijacked data from netfilter,  
+ * and calls add2buff().
  *
  * @param sockfd to get data from nfqueue.
  * @param buff buffer of transmit proxy,
@@ -453,12 +524,11 @@ static void *get_payload(void *args)
  */
 static void split_loop(int sockfd, proxy_buff *buff) 
 {
-    int listen_val, recv_count = 0, numbytes = 0;
-    int total = 0, diff = 0;
+    int listen_val, recv_count = 0, 
+        numbytes = 0, total = 0, diff = 0;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
-    socklen_t sin_size;
-    sin_size = sizeof(their_addr);
+    socklen_t sin_size = sizeof(their_addr);
     char src_ip[INET6_ADDRSTRLEN], *raw_buf = NULL;
     uint32_t src_port;
 
@@ -473,15 +543,14 @@ static void split_loop(int sockfd, proxy_buff *buff)
             src_ip, (int) src_port);
 
     pfd.fd = sockfd;
-    pfd.events = POLLIN;
+    pfd.events = POLLIN | POLLERR;
     while (true) {
         if (poll(&pfd, 1, 100) > 0) {
             recv_count = 0;
             if (pfd.revents == POLLERR){
                 perror("perr: ");
                 goto CONN_CLOSE;
-            }
-            if (pfd.revents == POLLIN) {
+            } else if (pfd.revents == POLLIN) {
                 raw_buf = (char *) malloc(BLOCKSIZE);
                 while (recv_count < (int) BLOCKSIZE) {
                     numbytes = recv(sockfd, raw_buf+recv_count, 
@@ -489,7 +558,7 @@ static void split_loop(int sockfd, proxy_buff *buff)
                     if (numbytes > 0) {
                         recv_count += numbytes;
                         total += numbytes;
-                    } else if(numbytes == 0)
+                    } else
                         goto CONN_CLOSE;
                 }
                 if (recv_count > 0) {
@@ -512,7 +581,7 @@ CONN_CLOSE:
 /**
  * @brief adds proxied payload to local 
  * buffer and updates count variables 
- * of proxy_buff pointer
+ * of proxy_buff 
  *
  * @param[out] buff
  * @param[in] raw_buf
@@ -559,7 +628,8 @@ static int add2buff(proxy_buff *buff, char *raw_buf,
 }
 
 /**
- * @brief  
+ * @brief set socket file descriptor
+ * to forward data through receiver proxy.
  *
  * @param[in] dest_ip
  * @param[in] dest_port
@@ -589,6 +659,16 @@ static int set_tx_sock(char *dest_ip, char *dest_port)
 
 }
 
+/**
+ * @brief  
+ *
+ * @param qh
+ * @param nfmsg
+ * @param nfa
+ * @param data
+ *
+ * @return 
+ */
 static int nfqueue_get_syn(struct nfq_q_handle *qh,
         struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data) 
 {
@@ -623,4 +703,25 @@ static int nfqueue_get_syn(struct nfq_q_handle *qh,
     return 0;
 }
 
+static void eval_config_item(char const *token,
+        char const *value, struct arg_configer *arg_conf)
+{
+    if (!strcmp(token, "local_port")) {
+        strcpy(arg_conf->local_port, value); 
+        printf("arg_conf->local_port: %s\n", arg_conf->local_port);
+        return;
+    }
+
+    if (!strcmp(token, "rx_proxy_port")) {
+        strcpy(arg_conf->rx_proxy_port, value);
+        printf("arg_conf->rx_proxy_port: %s\n", arg_conf->rx_proxy_port);
+        return;
+    }
+
+    if (!strcmp(token, "rx_proxy_ip")) {
+        strcpy(arg_conf->rx_proxy_ip, value);
+        printf("arg_conf->rx_proxy_ip: %s\n", arg_conf->rx_proxy_ip);
+        return;
+    }
+}
 

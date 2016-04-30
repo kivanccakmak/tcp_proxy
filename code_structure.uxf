@@ -3,9 +3,9 @@
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>115</x>
-      <y>415</y>
-      <w>255</w>
+      <x>275</x>
+      <y>195</y>
+      <w>265</w>
       <h>35</h>
     </coordinates>
     <panel_attributes>*file_read*
@@ -17,9 +17,9 @@ int get_file_size(FILE *fp);</panel_attributes>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>115</x>
-      <y>355</y>
-      <w>255</w>
+      <x>275</x>
+      <y>140</y>
+      <w>265</w>
       <h>35</h>
     </coordinates>
     <panel_attributes>*stream*
@@ -30,46 +30,48 @@ static void stream(char *ip_addr, char *port, FILE *fp);</panel_attributes>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>770</x>
-      <y>355</y>
-      <w>430</w>
-      <h>85</h>
+      <x>630</x>
+      <y>245</y>
+      <w>395</w>
+      <h>110</h>
     </coordinates>
     <panel_attributes>*boss_server*
 --
 #define CLOSE_CONN -1
-typedef struct cb_rx_args_t;
-typedef struct cb_reord_args_t;
+typedef struct fqueue_t;
+typedef struct pool_t;
+typedef struct rx_args_t;
+typedef struct queue_args_t;
 --
+pool_t* pool_init();
+void server_start(char *server_port, pool_t *pool);
+int rcv_sock_init(char *server_port);
 static void sigchld_handler(int s);
 static struct sigaction sig_init();
-static void server_listen(char *server_port, struct packet_pool *pool, queue_t *queue);
-static void set_cb_rx_args(cb_rx_args_t *rx_args, int sockfd, queue_t *queue, struct packet_pool *pool, int poll_timeout);
- 
-                            
-</panel_attributes>
+static void accept_loop(int sockfd, pool_t* pl);</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>380</x>
-      <y>355</y>
-      <w>380</w>
-      <h>240</h>
+      <x>275</x>
+      <y>245</y>
+      <w>340</w>
+      <h>295</h>
     </coordinates>
     <panel_attributes>*split*
 --
 #define INITIAL_CAPACITY 1000
-#define QUEUE_NUM 0
 #define CONN_NUMBER 2
 #define CLOSED -1
 #define ACTIVE 1
 #define PASSIVE 0
 #define QUEUER_BUF_SIZE 10000
+#define WAIT_LIMIT 10
+#define QUEUE_NUM 0
 struct ipv4_packet;
 struct cb_args_syn;
-typedef proxy_buff;
+typedef struct proxy_buff;
 struct split_args;
 struct cb_cntrl_args;
 struct link;
@@ -77,93 +79,96 @@ struct link_control;
 struct cb_tx_args;
 struct cb_nfq_args;
 --
-static int nfqueue_get_syn(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data);
+static int nfqueue_get_syn(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, 
+                           struct nfq_data *nfa, void *data);
 static void* queuer_loop(void __attribute__((unused)) *unused);
 static void* pass_payload(void *args);
-static struct listen_args* set_listen_args(char *dest_ip, char *dest_port, char *local_part);
-static int set_tx_sock(char *dest_ip, char *dest_port);
-static void add2buf(proxy_buff *buff, char *raw_buf);
+static struct listen_args* set_listen_args(char *dest_ip, 
+        char *dest_port, char *local_part);
+static int set_tx_sock(char *dest_ip, char *dest_port); 
+static int add2buff(proxy_buff *buff, char *raw_buf, int recv_count); 
 static struct split_args* set_split_args(char *local_port);
-static void* get_payload(void *args);
-static struct cb_cntrl_args* set_controller_args(char *dest_ip, char *dest_port, proxy_buff *buff);
+static void* get_payload(void *args); 
+static struct cb_cntrl_args* set_controller_args(char *dest_ip, 
+        char *dest_port, proxy_buff *buff); 
 static void set_link(char *dest_ip, char *dest_port, struct link *tcp_link);
 static void *run_controller(void *args);
-static void *tx_chain(void *args);
+static void *tx_chain(void *args); 
+static void split_loop(int sockfd, proxy_buff *buff);</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>675</x>
+      <y>490</y>
+      <w>360</w>
+      <h>255</h>
+    </coordinates>
+    <panel_attributes>*pqueue*
+--
+#define PRI_CONVERT(x) ((-1 * x) -1)
+typedef unsigned long long pqueue_pri_t;
+typedef pqueue_pri_t (*pqueue_get_pri_f)(void *a);
+typedef void (*pqueue_set_pri_f)(void *a, pqueue_pri_t pri);
+typedef int (*pqueue_cmp_pri_f)(pqueue_pri_t next, pqueue_pri_t curr);
+typedef size_t (*pqueue_get_pos_f)(void *a);
+typedef void (*pqueue_set_pos_f)(void *a, size_t pos);
+typedef void (*pqueue_print_entry_f)(FILE *out, void *a);
+typedef struct pqueue_t;
+typedef struct node_t;
+--
+int cmp_pri(pqueue_pri_t next, pqueue_pri_t curr);
+void set_pri(void *a, pqueue_pri_t pri);
+pqueue_pri_t get_pri(void *a);
+size_t get_pos(void *a);
+void set_pos(void *a, size_t pos);
+pqueue_t *
+pqueue_init(size_t n, pqueue_cmp_pri_f cmppri, pqueue_get_pri_f getpri,
+            pqueue_set_pri_f setpri, pqueue_get_pos_f getpos, pqueue_set_pos_f setpos);
+void pqueue_free(pqueue_t *q);
+size_t pqueue_size(pqueue_t *q);
+int pqueue_insert(pqueue_t *q, void *d);
+pqueue_change_priority(pqueue_t *q, pqueue_pri_t new_pri, void *d);
+void *pqueue_pop(pqueue_t *q);
+int pqueue_remove(pqueue_t *q, void *d);
+void *pqueue_peek(pqueue_t *q);
+void pqueue_print(pqueue_t *q, FILE *out, pqueue_print_entry_f print);
+void pqueue_dump(pqueue_t *q, FILE *out, pqueue_print_entry_f print);
+int pqueue_is_valid(pqueue_t *q);
 </panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>820</x>
-      <y>550</y>
-      <w>320</w>
-      <h>70</h>
-    </coordinates>
-    <panel_attributes>*queue*
---
-#define INIT_QUEUE_SIZE sizeof(char *) * 1000;
-#define NO_SEQ -1
-typedef struct queue_t;
---
-void* queue_wait(void *args);
-queue_t* queue_init(char *dest_ip, char *dest_port);
-
-</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>995</x>
-      <y>450</y>
-      <w>205</w>
-      <h>85</h>
-    </coordinates>
-    <panel_attributes>*reorder*
---
-#define INIIT_POOL_SIZE 1000
-#define INIT_BUF_SIZE 1000
-#define NO_SEQUENCE -1
-struct packet_pool;
---
-struct packet_pool* packet_pool_init();
-void* nudge_queue(void *args);
-static void add2queue(queue_t *queue, char *raw_data);</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>770</x>
-      <y>450</y>
-      <w>210</w>
-      <h>35</h>
-    </coordinates>
-    <panel_attributes>*link_receptor*
---
-void *rx_chain(void *args);
-void push2pool(char *raw_packet, struct packet_pool *pool);</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Relation</type>
-    <coordinates>
-      <x>215</x>
+      <x>630</x>
       <y>375</y>
-      <w>24</w>
-      <h>49</h>
+      <w>205</w>
+      <h>95</h>
     </coordinates>
-    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
-    <additional_attributes>15;40;15;15</additional_attributes>
+    <panel_attributes>*forward*
+--
+#define INIT_QUEUE_SIZE sizeof(char*) * 1000;
+#define SLEEP 0;
+#define SEND 1;
+#define WAIT_TIME 2;
+--
+void *wait2forward(void *args);
+static int fill_queue(pqueue_t *pq, fqueue_t *fq);
+static void forward_data(fqueue_t *fq, 
+        int pack_cnt);
+static void forward_loop(pool_t *pl, fqueue_t *fq);
+</panel_attributes>
+    <additional_attributes/>
   </element>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>710</x>
-      <y>690</y>
-      <w>170</w>
-      <h>55</h>
+      <x>575</x>
+      <y>140</y>
+      <w>205</w>
+      <h>70</h>
     </coordinates>
     <panel_attributes>*network*
 --
@@ -179,14 +184,133 @@ void* get_in_ipaddr(struct sockaddr *sa);
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>1215</x>
-      <y>355</y>
-      <w>160</w>
-      <h>35</h>
+      <x>815</x>
+      <y>140</y>
+      <w>210</w>
+      <h>65</h>
     </coordinates>
     <panel_attributes>*receive*
 --
-static void get_packets(char *port, FILE *fp);</panel_attributes>
+static void get_packets(char *port, 
+        FILE *fp, FILE *logp);
+static void recv_loop(struct pollfd *pfd, 
+        int sockfd, FILE *fp, FILE *logp);
+static int sock_init(char *port);</panel_attributes>
     <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>845</x>
+      <y>375</y>
+      <w>180</w>
+      <h>45</h>
+    </coordinates>
+    <panel_attributes>*link_receptor*
+--
+void *rx_chain(void *args);
+static void add2queue(pool_t *pl, 
+        unsigned char *raw_packet);
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>615</x>
+      <y>195</y>
+      <w>24</w>
+      <h>59</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>15;15;15;50</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>765</x>
+      <y>125</y>
+      <w>59</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>15;15;50;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>600</x>
+      <y>195</y>
+      <w>24</w>
+      <h>59</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>15;15;15;50</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>525</x>
+      <y>125</y>
+      <w>59</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>50;15;15;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>915</x>
+      <y>405</y>
+      <w>24</w>
+      <h>94</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;85;15;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>915</x>
+      <y>340</y>
+      <w>24</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;35;15;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>720</x>
+      <y>455</y>
+      <w>24</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;35;15;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>720</x>
+      <y>340</y>
+      <w>24</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;35;15;15</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>390</x>
+      <y>160</y>
+      <w>24</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>15;35;15;15</additional_attributes>
   </element>
 </diagram>
