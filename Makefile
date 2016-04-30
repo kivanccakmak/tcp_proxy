@@ -6,16 +6,16 @@ FIGS_FILE   = doc/figs
 
 
 SOURCES += $(wildcard ../receive/*.c)  \
-		   $(wildcard ../stream/*.c)   \
-		   $(wildcard ../tx_proxy/*.c) \
-	       $(wildcard ../rx_proxy/*.c) \
-		   $(wildcard ../commons/*.c)  \
+           $(wildcard ../stream/*.c)   \
+           $(wildcard ../tx_proxy/*.c) \
+           $(wildcard ../rx_proxy/*.c) \
+           $(wildcard ../commons/*.c)  \
 
 HEADERS += $(wildcard ../receive/*.h)  \
-		   $(wildcard ../stream/*.h)   \
-		   $(wildcard ../tx_proxy/*.h) \
-	       $(wildcard ../rx_proxy/*.h) \
-		   $(wildcard ../commons/*.h)  \
+           $(wildcard ../stream/*.h)   \
+           $(wildcard ../tx_proxy/*.h) \
+           $(wildcard ../rx_proxy/*.h) \
+           $(wildcard ../commons/*.h)  \
 
 default: all
 
