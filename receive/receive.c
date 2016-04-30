@@ -1,9 +1,9 @@
 #include "receive.h"
 
 static void recv_loop(struct pollfd *pfd, int sockfd, 
-        FILE *fp, FILE *logp);
+        FILE *fp, FILE *res_fp);
 
-static void get_packets(char *port, FILE *fp, FILE *logp);
+static void get_packets(char *port, FILE *fp, FILE *res_fp);
 
 static int sock_init(char *port);
 
@@ -12,11 +12,14 @@ static const int num_options = 3;
 static void eval_config_item(char const *token,
         char const *value, struct arg_configer *arg_conf); 
 
+static FILE *log_fp;
+
 #ifdef RECV
 int main(int argc, char **argv) 
 {
     const char *port, *output, *log_file;
-    FILE *fp, *logp;
+    FILE *fp, *res_fp;
+    log_fp = fopen(RECV_LOG, "a+"); 
 
     if (argc == 4) {
         int c = 0, i, option_index = 0;
@@ -83,8 +86,12 @@ int main(int argc, char **argv)
     #endif
 
     fp = fopen(output, "a");
-    logp = fopen(log_file, "a");
-    get_packets((char *)port, fp, logp);
+    LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);
+
+    res_fp = fopen(log_file, "a");
+    LOG_ASSERT(log_fp, LL_ERROR, res_fp!=NULL);
+
+    get_packets((char *)port, fp, res_fp);
     return 0;
 }
 #endif
@@ -97,7 +104,7 @@ int main(int argc, char **argv)
  */
 static int sock_init(char *port)
 {
-    int sockfd, rs_addr, yes = 1;
+    int sockfd, ret, yes = 1;
     
     struct addrinfo hints, *addr;
     addr = (struct addrinfo*) 
@@ -109,31 +116,22 @@ static int sock_init(char *port)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    rs_addr = getaddrinfo(NULL, port, &hints, &addr);
-    if (rs_addr != 0) {
-        fprintf(stderr,
-                "getaddrinfo: %s\n", gai_strerror(rs_addr));
-    }
+    ret = getaddrinfo(NULL, port, &hints, &addr);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
 
-    if (setsockopt(sockfd, SOL_SOCKET, 
-                SO_REUSEADDR, &yes, sizeof(int)) != 0) {
-        perror("setsockopt: ");
-        exit(1);
-    }
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+            &yes, sizeof(int));
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
-    if (bind(sockfd, addr->ai_addr, addr->ai_addrlen) == -1) {
-        close(sockfd);
-        perror("server: bind");
-        exit(1);
-    }
+    ret = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
+    LOG_ASSERT(log_fp, LL_ERROR, ret!=-1);
 
-    if (addr == NULL) {
-        fprintf(stderr, "server: failed to bind\n");
-        exit(1);
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, addr!=NULL);
+
     return sockfd;
 }
 
@@ -144,10 +142,10 @@ static int sock_init(char *port)
  * @param[in] pfd
  * @param[in] sockfd
  * @param[in] fp
- * @param[in] logp
+ * @param[in] res_fp
  */
 static void recv_loop(struct pollfd *pfd, int sockfd, 
-        FILE *fp, FILE *logp)
+        FILE *fp, FILE *res_fp)
 {
     int numbytes = 0, recv_count = 0,
         total = 0, i = 0;
@@ -179,9 +177,9 @@ static void recv_loop(struct pollfd *pfd, int sockfd,
                     sprintf(log_str, "diff: %f bytes: %d\n",
                             t_diff, total);
                     fprintf(fp, "%s", buffer);
-                    fprintf(logp, "%s", log_str);
+                    fprintf(res_fp, "%s", log_str);
                     fflush(fp);
-                    fflush(logp);
+                    fflush(res_fp);
                 }
             }
         }
@@ -193,7 +191,7 @@ CLOSE_CONN:
         t_diff = ((float) (t2 - t1) / 1000000) * 1000;
         sprintf(log_str, "diff: %f bytes: %d\n",
                 t_diff, total);
-        fprintf(logp, "%s", log_str);
+        fprintf(res_fp, "%s", log_str);
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
                 fprintf(fp, "%c", buffer[i]);
@@ -210,11 +208,11 @@ CLOSE_CONN:
  *
  * @param[in] port
  * @param[in] fp
- * @param[in] logp
+ * @param[in] res_fp
  */
-void get_packets(char *port, FILE *fp, FILE *logp) 
+void get_packets(char *port, FILE *fp, FILE *res_fp) 
 { 
-    int sockfd;
+    int sockfd, ret;
     struct sockaddr_storage their_addr;
     socklen_t sin_size;
     struct pollfd pfd;
@@ -222,21 +220,19 @@ void get_packets(char *port, FILE *fp, FILE *logp)
     sin_size = sizeof(their_addr);
     sockfd = sock_init(port);
 
-    printf("end destination listens \n");
-    if (listen(sockfd, 1) != 0) {
-        perror("listen: ");
-        exit(1);
-    }
+    ret = listen(sockfd, 1);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     printf("end destination waits connection \n");
     sockfd = accept(sockfd, 
             (struct sockaddr*)&their_addr, &sin_size);
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
     printf("end destination accepted connection \n");
 
     pfd.fd = sockfd;
     pfd.events = POLLIN;
 
-    recv_loop(&pfd, sockfd, fp, logp);
+    recv_loop(&pfd, sockfd, fp, res_fp);
 }
 
 static void eval_config_item(char const *token,

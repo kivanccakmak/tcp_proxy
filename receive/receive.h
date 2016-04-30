@@ -17,9 +17,11 @@
 #include <libconfig.h>
 #include <getopt.h>
 #include "../commons/network/network.h"
+#include "../commons/logger/logger.h"
 
 #define PATH_MAX 2048
 #define PORT_MAX_CHAR 50
+#define RECV_LOG "recv.log"
 
 struct arg_configer{
     char log_file[PATH_MAX];
