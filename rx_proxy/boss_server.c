@@ -23,10 +23,19 @@ static void eval_config_item(char const *token,
 
 static const int num_options = 3;
 
+static FILE *log_fp;
+
 #ifdef RX_PROXY
 int main(int argc, char ** argv)
 {
+    int ret;
     const char *dest_ip, *dest_port, *port;
+    log_fp = fopen(RX_PROXY_LOG, "w+");
+    if (log_fp == NULL) {
+        perror("fopen: ");
+        exit(1);
+    }
+
     if (argc == 4) {
         int c = 0, i, option_index = 0;
         struct arg_configer arg_conf;
@@ -100,8 +109,9 @@ int main(int argc, char ** argv)
     que_args->dest_ip = (char *) dest_ip;
     que_args->dest_port = (char *) dest_port;
     
-    pthread_create(&que_id, NULL, &wait2forward,
+    ret = pthread_create(&que_id, NULL, &wait2forward,
             (void*) que_args);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     sleep(3);
     
     server_start((char*) port, pl);
@@ -153,7 +163,7 @@ pool_t* pool_init()
   */
 void server_start(char* server_port, pool_t *pl)
 {
-    int sockfd, rs_addr, yes = 1;
+    int sockfd, ret, yes = 1;
     struct sigaction sig_sa;
     struct addrinfo hints, *addr;
 
@@ -164,36 +174,26 @@ void server_start(char* server_port, pool_t *pl)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    rs_addr = getaddrinfo(NULL, server_port,
+    ret = getaddrinfo(NULL, server_port,
             &hints, &addr);
-    if (rs_addr != 0) {
-        perror("getaddrinfo:");
-        exit(0);
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
     sockfd = socket(addr->ai_family,
             addr->ai_socktype, addr->ai_protocol);
-    if (sockfd == -1) {
-        perror("socket");
-        exit(0);
-    }
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-                sizeof(int)) != 0) {
-        perror("setsockopt: ");
-        exit(0);
-    }
-    if (bind(sockfd, addr->ai_addr, addr->ai_addrlen) == -1) {
-        perror("server: bind");
-        exit(0);
-    }
-    if (addr == NULL) {
-        fprintf(stderr, "server: failed to bind\n");
-        exit(0);
-    }
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
+
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+            &yes, sizeof(int));
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
+    ret = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
+    LOG_ASSERT(log_fp, LL_ERROR, ret!=-1);
+
+    LOG_ASSERT(log_fp, LL_ERROR, addr!=NULL);
+
     printf("-listen()\n");
-    if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen: ");
-        exit(0);
-    }
+    ret = listen(sockfd, BACKLOG);
+    LOG_ASSERT(log_fp, LL_ERROR, ret!=-1);
 
     sig_sa = sig_init();
     accept_loop(sockfd, pl);
@@ -208,9 +208,9 @@ void server_start(char* server_port, pool_t *pl)
  * @param[in] sockfd
  * @param[in] pl
  */
-static void accept_loop(int sockfd, pool_t* pl) 
+static void accept_loop(int sockfd, pool_t* pl)
 {
-    int newfd, thr_out;
+    int ret, newfd;
     char tx_ip[INET6_ADDRSTRLEN];
     uint32_t tx_port;
     struct sockaddr_storage their_addr;
@@ -221,19 +221,22 @@ static void accept_loop(int sockfd, pool_t* pl)
     while (true) {
         newfd = accept(sockfd, (struct sockaddr*)&their_addr,
                 &sin_size);
+        LOG_ASSERT(log_fp, LL_ERROR, newfd!=-1);
+
         pthread_t t_id;
         inet_ntop(their_addr.ss_family,
                 get_in_ipaddr((struct sockaddr*)&their_addr),
                 tx_ip, sizeof(tx_ip));
+        LOG_ASSERT(log_fp, LL_ERROR, tx_ip!=NULL);
+
         tx_port = get_in_portnum((struct sockaddr*)&their_addr);
-        printf("connection from %s : %d \n", tx_ip, tx_port);
+        printf("connection %s : %d \n", tx_ip, tx_port);
         rx_args = (rx_args_t*) malloc(sizeof(rx_args_t));
         rx_args->sockfd = newfd;
         rx_args->pl = pl;
         rx_args->poll_timeout = 100;
-        thr_out = pthread_create(&t_id, NULL, &rx_chain, rx_args);
-        if (thr_out < 0) 
-            perror("could not create thread");
+        ret = pthread_create(&t_id, NULL, &rx_chain, rx_args);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     }
 }
 
@@ -246,7 +249,8 @@ static void accept_loop(int sockfd, pool_t* pl)
  * @param arg_conf[out]
  */
 static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf) {
+        char const *value, struct arg_configer *arg_conf)
+{
     if (!strcmp(token, "port")) {
         strcpy(arg_conf->port, value); 
         printf("arg_conf->port: %s\n", arg_conf->port);
@@ -274,14 +278,15 @@ static void eval_config_item(char const *token,
  */
 static struct sigaction sig_init()
 {
+    int ret;
     struct sigaction sa;
     sa.sa_handler = sigchld_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1){
-        perror("sigaction");
-        exit(1);
-    }
+
+    ret = sigaction(SIGCHLD, &sa, NULL);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
     return sa;
 }
 

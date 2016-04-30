@@ -15,6 +15,8 @@
 #include "time.h"
 
 #include "../commons/network/network.h"
+#include "../commons/logger/logger.h"
+
 #include "libpqueue/pqueue.h"
 #include "boss_server.h"
 
