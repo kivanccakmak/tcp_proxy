@@ -6,6 +6,8 @@ static void forward_data(fqueue_t* fq, int pack_cnt);
 
 static void forward_loop(pool_t *pl, fqueue_t *fq);
 
+static FILE *log_fp;
+
 /**
  * @brief enabled by boss_server module. 
  * gets and  initializes pool_t and fqueue_t 
@@ -17,9 +19,15 @@ static void forward_loop(pool_t *pl, fqueue_t *fq);
  */
 void *wait2forward(void *args) 
 {
-    int sockfd;
+    int ret, sockfd;
     char *dest_ip = NULL, *dest_port = NULL;
     struct sockaddr_in server;
+
+    log_fp = fopen(RX_PROXY_LOG, "a");
+    if (log_fp == NULL) {
+        perror("fopen: ");
+        exit(1);
+    }
 
     fqueue_t *fq;
     pool_t *pl = NULL;
@@ -34,10 +42,10 @@ void *wait2forward(void *args)
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(dest_port));
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (connect(sockfd, (struct sockaddr*)&server,
-                sizeof(server)) < 0) {
-        perror("forward connection failed");
-    }
+
+    ret = connect(sockfd, (struct sockaddr*) &server,
+            sizeof(server));
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     // init forward queue
     fq = (fqueue_t*) malloc(sizeof(fqueue_t));
@@ -63,9 +71,11 @@ void *wait2forward(void *args)
 static void forward_loop(pool_t *pl, fqueue_t *fq) 
 {
     struct timespec to;
-    int pack_cnt;
+    int pack_cnt, ret;
 
-    pthread_mutex_lock(&pl->lock);
+    ret = pthread_mutex_lock(&pl->lock);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
     while (true) {
         to.tv_sec = WAIT_TIME;
         clock_gettime(CLOCK_MONOTONIC, &to);
@@ -73,11 +83,13 @@ static void forward_loop(pool_t *pl, fqueue_t *fq)
         pthread_cond_timedwait(&pl->cond, &pl->lock, &to);
         pack_cnt = fill_queue(pl->pq, fq);
         if (pack_cnt != -1) {
-            pthread_mutex_unlock(&pl->lock);
+            ret = pthread_mutex_unlock(&pl->lock);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
             forward_data(fq, pack_cnt);
             pl->sent_min_seq += pack_cnt;
         } else {
-            pthread_mutex_unlock(&pl->lock);
+            ret = pthread_mutex_unlock(&pl->lock);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         }
     }
 }

@@ -8,13 +8,13 @@ TARGET_ARGS = proxy_rx_args
 
 SRC = boss_server.c
 
-DEP = forward.c \
-	  link_receptor.c \
-	  libpqueue/pqueue.c \
-	  ../commons/network/network.c 
+DEP += forward.c \
+       link_receptor.c \
+       libpqueue/pqueue.c \
+       ../commons/network/network.c \
 
-LIBS = -lpthread \
-	   -lm 
+LIBS += -lpthread \
+        -lm \
 
 CFLAGS = -DRX_PROXY
 
