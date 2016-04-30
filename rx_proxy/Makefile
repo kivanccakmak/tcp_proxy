@@ -1,10 +1,21 @@
 GCC = gcc
-TARGET = proxy_rx # to run with config file
-TARGET_ARGS = proxy_rx_args # to run with argument variables
+
+TARGET = proxy_rx 
+# to run with config file
+#
+TARGET_ARGS = proxy_rx_args  
+# to run with argument variables
 
 SRC = boss_server.c
-DEP = forward.c pqueue.c link_receptor.c ../network/network.c 
-LIBS = -lpthread -lm 
+
+DEP = forward.c \
+	  link_receptor.c \
+	  libpqueue/pqueue.c \
+	  ../commons/network/network.c 
+
+LIBS = -lpthread \
+	   -lm 
+
 CFLAGS = -DRX_PROXY
 
 LOG = rx_proxy.log

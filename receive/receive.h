@@ -16,7 +16,7 @@
 #include <poll.h>
 #include <libconfig.h>
 #include <getopt.h>
-#include "../network/network.h"
+#include "../commons/network/network.h"
 
 #define PATH_MAX 2048
 #define PORT_MAX_CHAR 50

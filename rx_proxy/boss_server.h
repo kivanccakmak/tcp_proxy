@@ -21,9 +21,9 @@
 #include "time.h"
 
 #include "forward.h"
-#include "../network/network.h"
+#include "../commons/network/network.h"
 #include "link_receptor.h"
-#include "pqueue.h"
+#include "libpqueue/pqueue.h"
 
 #define CLOSE_CONN -1
 
