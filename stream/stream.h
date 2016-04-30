@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include "../file_read/file_read.h"
+#include "file_read/file_read.h"
 #include "../network/network.h"
 
 #define PATH_MAX 2048
