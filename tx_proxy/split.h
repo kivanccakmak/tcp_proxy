@@ -28,7 +28,7 @@
 #include <linux/if_ether.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include "../network/network.h"
+#include "../commons/network/network.h"
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
