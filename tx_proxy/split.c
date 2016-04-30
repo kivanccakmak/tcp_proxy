@@ -507,7 +507,7 @@ static void *get_payload(void *args)
  */
 static void split_loop(int sockfd, proxy_buff *buff) 
 {
-    int listen_val, recv_count = 0, 
+    int ret, recv_count = 0, 
         numbytes = 0, total = 0, diff = 0;
     struct sockaddr_storage their_addr;
     struct pollfd pfd;
@@ -515,15 +515,20 @@ static void split_loop(int sockfd, proxy_buff *buff)
     char src_ip[INET6_ADDRSTRLEN], *raw_buf = NULL;
     uint32_t src_port;
 
-    listen_val = listen(sockfd, 1);
+    ret = listen(sockfd, 1);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+
     sockfd = accept(sockfd, 
             (struct sockaddr*)&their_addr, &sin_size);
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd==-1);
+
     inet_ntop(their_addr.ss_family, 
             get_in_ipaddr((struct sockaddr*)&their_addr),
             src_ip, sizeof(src_ip));
+    LOG_ASSERT(log_fp, LL_ERROR, src_ip!=NULL);
+
     src_port = get_in_portnum((struct sockaddr*)&their_addr);
-    printf("connection established with %s:%d\n",
-            src_ip, (int) src_port);
+    printf("connection %s:%d\n", src_ip, (int) src_port);
 
     pfd.fd = sockfd;
     pfd.events = POLLIN | POLLERR;
@@ -576,7 +581,7 @@ static int add2buff(proxy_buff *buff, char *raw_buf,
         int recv_count) 
 {
     bool extend = false;
-    int remained = 0, i = 0, pre_count = 0;
+    int ret, remained = 0, i = 0, pre_count = 0;
 
     // fill remaining as NULL, if residue
     if (recv_count > 0 && recv_count < BLOCKSIZE) {
@@ -586,7 +591,8 @@ static int add2buff(proxy_buff *buff, char *raw_buf,
         }
     }
 
-    pthread_mutex_lock(&buff->lock);
+    ret = pthread_mutex_lock(&buff->lock);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     // check capacity overflow
     remained = buff->capacity - buff->set_ind;
@@ -606,7 +612,8 @@ static int add2buff(proxy_buff *buff, char *raw_buf,
     buff->buffer[buff->set_ind] = raw_buf;
     buff->rx_byte += BLOCKSIZE;
 
-    pthread_mutex_unlock(&buff->lock);
+    ret = pthread_mutex_unlock(&buff->lock);
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     return buff->set_ind - buff->get_ind;
 }
 
@@ -621,8 +628,7 @@ static int add2buff(proxy_buff *buff, char *raw_buf,
  */
 static int set_tx_sock(char *dest_ip, char *dest_port) 
 {
-    int sockfd;
-    int conn_res;
+    int ret, sockfd;
 
     struct sockaddr_in server;
     server.sin_addr.s_addr = inet_addr(dest_ip);
@@ -630,16 +636,13 @@ static int set_tx_sock(char *dest_ip, char *dest_port)
     server.sin_port = htons(atoi(dest_port));
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    conn_res = connect(sockfd, (struct sockaddr*)&server,
-            sizeof(server));
+    LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
 
-    if (conn_res < 0) {
-        perror("connection failed. Error");
-        exit(0);
-    }
+    ret = connect(sockfd, (struct sockaddr*)&server,
+            sizeof(server));
+    LOG_ASSERT(log_fp, LL_ERROR, ret==0);
 
     return sockfd;
-
 }
 
 /**
@@ -707,4 +710,3 @@ static void eval_config_item(char const *token,
         return;
     }
 }
-
