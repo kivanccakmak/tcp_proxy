@@ -16,8 +16,10 @@
 #include <poll.h>
 #include <libconfig.h>
 #include <getopt.h>
+
 #include "../commons/network/network.h"
 #include "../commons/logger/logger.h"
+#include "../commons/argv_reader/argv_read.h"
 
 #define PATH_MAX 2048
 #define PORT_MAX_CHAR 50
@@ -29,11 +31,7 @@ struct arg_configer{
     char port[PORT_MAX_CHAR];
 };
 
-struct option long_options[] = {
-    {"port", required_argument, NULL, 'A'},
-    {"output", required_argument, NULL, 'B'},
-    {"log_file", required_argument, NULL, 'C'}
-};
+
 
 
 

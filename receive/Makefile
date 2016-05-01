@@ -8,6 +8,8 @@ TARGET_ARGS = receive_args
 
 SRC = receive.c
 
+DEP += ../commons/argv_reader/argv_read.c
+
 CFLAGS = -DRECV
 
 OUT = output.txt
@@ -16,11 +18,11 @@ default: all
 
 all: $(TARGET)
 
-$(TARGET): $(SRC) 
-	$(GCC) $(SRC) -o $(TARGET) -lconfig $(CFLAGS) -DCONF_ENABLE 
+$(TARGET): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) -lconfig $(CFLAGS) -DCONF_ENABLE
 
-$(TARGET_ARGS): $(SRC)
-	$(GCC) $(SRC) -o $(TARGET_ARGS) $(CFLAGS)
+$(TARGET_ARGS): $(SRC) $(DEP)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(CFLAGS) -DARGV_ENABLE
 
 clean:
 	rm -rf $(TARGET) $(TARGET_ARGS) $(OUT) $(OUT)

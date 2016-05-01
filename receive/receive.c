@@ -19,37 +19,42 @@ int main(int argc, char **argv)
 {
     const char *port, *output, *log_file;
     FILE *fp, *res_fp;
+    int i = 0, ret;
 
     log_fp = fopen(RECV_LOG, "w");
     if (log_fp == NULL) {
         perror("logfp: ");
         exit(1);
     }
-
+    
+    #ifdef ARGV_ENABLE
     if (argc == 4) {
-        int c = 0, i, option_index = 0;
-        struct arg_configer arg_conf;
-        for(;;) {
-            c = getopt_long(argc, argv, "",
-                    long_options, &option_index);
+        struct option long_options[] = {
+            {"port", required_argument, NULL, 'A'},
+            {"output", required_argument, NULL, 'B'},
+            {"log_file", required_argument, NULL, 'C'}
+        };
 
-            if (c == -1)
-                break;
+        arg_val_t **argv_vals = \
+            (arg_val_t **) malloc(sizeof(arg_val_t*) * (argc - 1));
 
-            if (c == '?' || c == ':')
-                exit(1);
+        for (i = 0; i < argc - 1; i++)
+            argv_vals[i] = (arg_val_t *) malloc(sizeof(arg_val_t));
 
-            for (i = 0; i < num_options; i++) {
-                if (long_options[i].val == c) {
-                    eval_config_item(long_options[i].name, optarg,
-                            &arg_conf);
-                }
-            }
-        }
-        port = arg_conf.port;
-        output = arg_conf.output;
-        log_file = arg_conf.log_file;
+        ret = argv_reader(argv_vals,
+                long_options, argv, argc);
+
+        port = get_argv((char *) "port", argv_vals, argc-1);
+        LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
+
+        output = get_argv((char *) "output", argv_vals, argc-1);
+        LOG_ASSERT(log_fp, LL_ERROR, output!=NULL);
+
+        log_file = get_argv((char *) "log_file", argv_vals, argc-1);
+        LOG_ASSERT(log_fp, LL_ERROR, log_file!=NULL);
+
     }
+    #endif
 
     #ifdef CONF_ENABLE
     if (argc == 1) {
