@@ -5,8 +5,6 @@ static void stream(char *ip_addr, char *port, FILE *fp);
 static void eval_config_item(char const *token,
         char const *value, struct arg_configer *arg_conf); 
 
-static int num_options = 3;
-
 static FILE *log_fp;
 
 #ifdef STREAM
@@ -14,37 +12,41 @@ int main(int argc, char *argv[])
 {
     const char *ip_addr, *port, *fname;
     FILE *fp;
+    int i = 0, ret;
 
     log_fp = fopen(STREAM_LOG, "w");
     if (log_fp == NULL) {
         perror("fopen: ");
         exit(1);
     }
-
+    
+    #ifdef ARGV_ENABLE
     if (argc == 4) {
-        int i = 0, c = 0, option_index = 0;
-        struct arg_configer arg_conf;
-        for (;;) {
-            c = getopt_long(argc, argv, "",
-                    long_options, &option_index);
+        struct option long_options[] = {
+            {"ip_addr", required_argument, NULL, 'A'},
+            {"port", required_argument, NULL, 'B'},
+            {"fname", required_argument, NULL, 'C'}
+        };
 
-            if (c == -1)
-                break;
+        arg_val_t **argv_vals = \
+            (arg_val_t **) malloc(sizeof(arg_val_t*) * (argc - 1));
 
-            if (c == '?' || c == ':')
-                exit(1);
+        for (i = 0; i < argc - 1; i++)
+            argv_vals[i] = (arg_val_t *) malloc(sizeof(arg_val_t));
 
-            for (i = 0; i < num_options; i++) {
-                if (long_options[i].val == c) {
-                    eval_config_item(long_options[i].name,
-                            optarg, &arg_conf);
-                }
-            }
-        }
-        ip_addr = arg_conf.ip_addr;
-        port = arg_conf.port;
-        fname = arg_conf.fname;
+        ret = argv_reader(argv_vals,
+                long_options, argv, argc);
+
+        ip_addr = get_argv((char *) "ip_addr", argv_vals, argc-1);
+        LOG_ASSERT(log_fp, LL_ERROR, ip_addr!=NULL);
+
+        port = get_argv((char *) "port", argv_vals, argc-1);
+        LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
+
+        fname = get_argv((char *) "fname", argv_vals, argc-1);
+        LOG_ASSERT(log_fp, LL_ERROR, fname!=NULL);
     }
+    #endif
     
     #ifdef CONF_ENABLE
     if (argc == 1) {

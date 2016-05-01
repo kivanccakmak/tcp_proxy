@@ -8,7 +8,8 @@ TARGET_ARGS = stream_args
 
 SRC = stream.c
 
-DEP = file_read/file_read.c
+DEP += file_read/file_read.c \
+	   ../commons/argv_reader/argv_read.c
 
 CFLAGS = -DSTREAM
 
@@ -20,6 +21,6 @@ $(TARGET): $(SRC) $(DEP)
 	$(GCC) $(SRC) $(DEP) -o $(TARGET) -lconfig $(CFLAGS) -DCONF_ENABLE
 
 $(TARGET_ARGS): $(SRC) $(DEP) 
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(CFLAGS)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(CFLAGS) -DARGV_ENABLE
 clean:
 	rm -f $(TARGET) $(TARGET_ARGS)

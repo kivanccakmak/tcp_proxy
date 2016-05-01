@@ -16,6 +16,7 @@
 #include "file_read/file_read.h"
 #include "../commons/network/network.h"
 #include "../commons/logger/logger.h"
+#include "../commons/argv_reader/argv_read.h"
 
 #define PATH_MAX 2048
 #define IP_CHAR_MAX 512 
@@ -29,10 +30,6 @@ struct arg_configer{
     char fname[PATH_MAX];
 };
 
-struct option long_options[] = {
-    {"ip_addr", required_argument, NULL, 'A'},
-    {"port", required_argument, NULL, 'B'},
-    {"fname", required_argument, NULL, 'C'}
-};
+
 
 #endif
