@@ -20,6 +20,7 @@ typedef enum log_level_en {
 #define LOG_ASSERT(fp, ll, expr)                           \
     do {                                                   \
         if(!(expr)) {                                      \
+            perror((""));                                  \
             fprintf(fp, "[%d] Assertion ("                 \
                        #expr                               \
                        ") failed"                          \
