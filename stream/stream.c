@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     }
     #endif
 
-    fp = fopen(fname, "w");
+    fp = fopen(fname, "r");
     LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);
 
     stream((char*) ip_addr, (char*) port, fp);
