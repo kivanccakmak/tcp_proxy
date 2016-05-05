@@ -18,8 +18,11 @@ static struct sigaction sig_init();
 
 static void accept_loop(int sockfd, pool_t* pl); 
 
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf);
+static void eval_config_item(
+                             char const          *token,
+                             char const          *value, 
+                             struct arg_configer *arg_conf
+                            );
 
 static const int num_options = 3;
 
@@ -248,8 +251,11 @@ static void accept_loop(int sockfd, pool_t* pl)
  * @param value[in]
  * @param arg_conf[out]
  */
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf)
+static void eval_config_item(
+                             char const *token,
+                             char const *value, 
+                             struct arg_configer *arg_conf
+                            )
 {
     if (!strcmp(token, "port")) {
         strcpy(arg_conf->port, value); 
