@@ -1,17 +1,19 @@
 #include "argv_read.h"
 
+static void example_usage();
+
 #ifdef ARGV_READ
 int main(int argc, char *argv[])
 {
     int i = 0, ret;
+    char *key1, *key2;
 
     struct option long_options[] = {
-        {"port", required_argument, NULL, 'A'},
-        {"output", required_argument, NULL, 'B'},
-        {"log_file", required_argument, NULL, 'C'}
+        {"key1", required_argument, NULL, 'A'},
+        {"key2", required_argument, NULL, 'B'},
     };
 
-    if (argc == 4) {
+    if (argc == 3) {
         arg_val_t **argv_vals = \
             (arg_val_t **) malloc(sizeof(arg_val_t*) * (argc - 1));
 
@@ -20,17 +22,35 @@ int main(int argc, char *argv[])
 
         ret = argv_reader(argv_vals,
                 long_options, argv, argc);
-        printf("ret: %d\n", ret);
+
         if (!ret) {
-            char *port;
-            port = get_argv((char *) "port", argv_vals, argc-1);
-            printf("port: %s\n", port);
+            key1 = get_argv((char *) "key1", argv_vals, argc-1);
+            key2 = get_argv((char *) "key2", argv_vals, argc-1);
+
+            if (key1 != NULL)
+                printf("key1: %s\n", key1);
+            else
+                printf("key1 is empty\n");
+
+            if (key2 != NULL)
+                printf("key2: %s\n", key2);
+            else
+                printf("key2 is empty\n");
+
         }
+    } else {
+        example_usage();
     }
 
     return 0;
 }
 #endif
+
+static void example_usage() 
+{
+    printf("== example usage == \n");
+    printf("./argv_read --key1=value1 --key2=value2\n"); 
+}
 
 /**
  * @brief 
@@ -85,7 +105,7 @@ char* get_argv(
                char ch[], 
                arg_val_t **argv_vals, 
                int argc
-               ) 
+              ) 
 {
     int i = 0;
     for (i = 0; i < argc; i++) {
