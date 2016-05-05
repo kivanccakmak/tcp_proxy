@@ -1,16 +1,27 @@
 #include "receive.h"
 
-static void recv_loop(struct pollfd *pfd, int sockfd, 
-        FILE *fp, FILE *res_fp);
+static void recv_loop(
+                      struct pollfd *pfd, 
+                      int           sockfd, 
+                      FILE          *fp, 
+                      FILE          *res_fp
+                     );
 
-static void get_packets(char *port, FILE *fp, FILE *res_fp);
+static void get_packets(
+                        char *port, 
+                        FILE *fp, 
+                        FILE *res_fp
+                       );
 
 static int sock_init(char *port);
 
 static const int num_options = 3;
 
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf); 
+static void eval_config_item(
+                             char const          *token,
+                             char const          *value, 
+                             struct arg_configer *arg_conf
+                            ); 
 
 static FILE *log_fp;
 
@@ -112,7 +123,8 @@ int main(int argc, char **argv)
  *
  * @param[in] port
  */
-static int sock_init(char *port)
+static int sock_init(
+                     char *port)
 {
     int sockfd, ret, yes = 1;
     
@@ -154,8 +166,12 @@ static int sock_init(char *port)
  * @param[in] fp
  * @param[in] res_fp
  */
-static void recv_loop(struct pollfd *pfd, int sockfd, 
-        FILE *fp, FILE *res_fp)
+static void recv_loop(
+                      struct pollfd *pfd, 
+                      int           sockfd, 
+                      FILE          *fp, 
+                      FILE          *res_fp
+                     )
 {
     int numbytes = 0, recv_count = 0,
         total = 0, i = 0;
@@ -220,7 +236,11 @@ CLOSE_CONN:
  * @param[in] fp
  * @param[in] res_fp
  */
-void get_packets(char *port, FILE *fp, FILE *res_fp) 
+void get_packets(
+                 char *port, 
+                 FILE *fp, 
+                 FILE *res_fp
+                ) 
 { 
     int sockfd, ret;
     struct sockaddr_storage their_addr;
@@ -245,8 +265,20 @@ void get_packets(char *port, FILE *fp, FILE *res_fp)
     recv_loop(&pfd, sockfd, fp, res_fp);
 }
 
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf) {
+
+/**
+ * @brief 
+ *
+ * @param token
+ * @param value
+ * @param 
+ */
+static void eval_config_item(
+                             char const          *token,
+                             char const          *value, 
+                             struct arg_configer *arg_conf
+                            ) 
+{
     if (!strcmp(token, "port")) {
         strcpy(arg_conf->port, value); 
         printf("arg_conf->port: %s\n", arg_conf->port);
