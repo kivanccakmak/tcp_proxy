@@ -1,9 +1,16 @@
 #include "stream.h"
 
-static void stream(char *ip_addr, char *port, FILE *fp);
+static void stream(
+                   char *ip_addr, 
+                   char *port, 
+                   FILE *fp
+                  );
 
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf); 
+static void eval_config_item(
+                            char const          *token,
+                            char const          *value, 
+                            struct arg_configer *arg_conf
+                           ); 
 
 static FILE *log_fp;
 
@@ -103,7 +110,11 @@ int main(int argc, char *argv[])
  * @param[in] port
  * @param[in] fp
  */
-static void stream(char *ip_addr, char *port, FILE *fp)
+static void stream(
+                   char *ip_addr, 
+                   char *port, 
+                   FILE *fp
+                  )
 { 
     int ret, sockfd;
     int byte_count = 0, temp_count = 0, capacity = 0;
@@ -149,8 +160,12 @@ static void stream(char *ip_addr, char *port, FILE *fp)
     }
 } 
 
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf) {
+static void eval_config_item(
+                             char const          *token,
+                             char const          *value, 
+                             struct arg_configer *arg_conf
+                            ) 
+{
     if (!strcmp(token, "ip_addr")) {
         strcpy(arg_conf->ip_addr, value);
         printf("arg_conf->ip_addr: %s\n", arg_conf->ip_addr);
