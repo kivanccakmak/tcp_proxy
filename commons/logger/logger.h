@@ -30,6 +30,15 @@ typedef enum log_level_en {
                        __FILE__,                           \
                        __func__,                           \
                        __LINE__);                          \
+            printf("[%d] Assertion ("                      \
+                       #expr                               \
+                       ") failed"                          \
+                       ", [%s] in %s:%s:%d\n",             \
+                       ll,                                 \
+                       clean_errno(),                      \
+                       __FILE__,                           \
+                       __func__,                           \
+                       __LINE__);                          \
             exit(EXIT_FAILURE);                            \
     } } while(0);
 
