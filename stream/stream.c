@@ -12,7 +12,7 @@ static void eval_config_item(
                             struct arg_configer *arg_conf
                            ); 
 
-static FILE *log_fp;
+static FILE *log_fp; /* errors logger fp */
 
 static struct option long_options[] = {
     {"dest_ip", required_argument, NULL, 'A'},
@@ -132,28 +132,3 @@ static void stream(
         temp_count = 0;
     }
 } 
-
-static void eval_config_item(
-                             char const          *token,
-                             char const          *value, 
-                             struct arg_configer *arg_conf
-                            ) 
-{
-    if (!strcmp(token, "ip_addr")) {
-        strcpy(arg_conf->ip_addr, value);
-        printf("arg_conf->ip_addr: %s\n", arg_conf->ip_addr);
-        return;
-    }
-
-    if (!strcmp(token, "port")) {
-        strcpy(arg_conf->port, value);
-        printf("arg_conf->port: %s\n", arg_conf->port);
-        return;
-    }
-
-    if (!strcmp(token, "fname")) {
-        strcpy(arg_conf->fname, value);
-        printf("arg_conf->log_file: %s\n", arg_conf->fname);
-        return;
-    }
-}
