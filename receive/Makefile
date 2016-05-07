@@ -1,7 +1,6 @@
 GCC = gcc
 
 TARGET = receive
-# to run with config file
 
 SRC = receive.c
 
@@ -19,4 +18,4 @@ $(TARGET): $(SRC) $(DEP)
 	$(GCC) $(SRC) $(DEP) -o $(TARGET) -lconfig $(CFLAGS)
 
 clean:
-	rm -rf $(TARGET) $(TARGET_ARGS) $(OUT) $(OUT)
+	rm -rf $(TARGET) $(OUT) $(OUT)

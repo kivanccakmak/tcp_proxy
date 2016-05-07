@@ -94,8 +94,7 @@ int main(int argc, char **argv)
  *
  * @param[in] port
  */
-static int sock_init(
-                     char *port)
+static int sock_init(char *port)
 {
     int sockfd, ret, yes = 1;
     
