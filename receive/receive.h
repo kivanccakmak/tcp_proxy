@@ -28,15 +28,4 @@
 
 #define RECV_LOG "recv.log"
 
-struct arg_configer{
-    char log_file[PATH_MAX];
-    char output[PATH_MAX];
-    char port[PORT_MAX_CHAR];
-};
-
-
-
-
-
-
 #endif
