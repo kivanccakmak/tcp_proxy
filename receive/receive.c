@@ -15,8 +15,6 @@ static void get_packets(
 
 static int sock_init(char *port);
 
-static const int num_options = 3;
-
 static void eval_config_item(
                              char const          *token,
                              char const          *value,
