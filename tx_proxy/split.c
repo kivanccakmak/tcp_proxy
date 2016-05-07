@@ -2,12 +2,6 @@
 
 #define QUEUE_NUM 0 
 
-struct arg_configer{
-    char rx_proxy_ip[IP_CHAR_MAX];
-    char rx_proxy_port[PORT_MAX_CHAR];
-    char local_port[PORT_MAX_CHAR];
-};
-
 static struct option long_options[] = {
     {"local_port", required_argument, NULL, 'A'},
     {"rx_proxy_port", required_argument, NULL, 'B'},
@@ -60,14 +54,6 @@ static void *run_controller(void *args);
 static void *tx_chain(void *args); 
 
 static void split_loop(int sockfd, proxy_buff *buff);
-
-static void eval_config_item(
-                             char const          *token,
-                             char const          *value, 
-                             struct arg_configer *arg_conf
-                            );
-
-static const int num_options = 3;
 
 static FILE *log_fp;
 
@@ -693,29 +679,4 @@ static int nfqueue_get_syn(
     }
 
     return 0;
-}
-
-static void eval_config_item(
-                             char const          *token,
-                             char const          *value, 
-                             struct arg_configer *arg_conf
-                            )
-{
-    if (!strcmp(token, "local_port")) {
-        strcpy(arg_conf->local_port, value); 
-        printf("arg_conf->local_port: %s\n", arg_conf->local_port);
-        return;
-    }
-
-    if (!strcmp(token, "rx_proxy_port")) {
-        strcpy(arg_conf->rx_proxy_port, value);
-        printf("arg_conf->rx_proxy_port: %s\n", arg_conf->rx_proxy_port);
-        return;
-    }
-
-    if (!strcmp(token, "rx_proxy_ip")) {
-        strcpy(arg_conf->rx_proxy_ip, value);
-        printf("arg_conf->rx_proxy_ip: %s\n", arg_conf->rx_proxy_ip);
-        return;
-    }
 }

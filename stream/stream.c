@@ -6,12 +6,6 @@ static void stream(
                    FILE *fp
                   );
 
-static void eval_config_item(
-                            char const          *token,
-                            char const          *value, 
-                            struct arg_configer *arg_conf
-                           ); 
-
 static FILE *log_fp; /* errors logger fp */
 
 static struct option long_options[] = {

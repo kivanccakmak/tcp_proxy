@@ -15,12 +15,6 @@ static void get_packets(
 
 static int sock_init(char *port);
 
-static void eval_config_item(
-                             char const          *token,
-                             char const          *value,
-                             struct arg_configer *arg_conf
-                            ); 
-
 static FILE *log_fp; /* error logger fp */
 
 static struct option long_options[] = {
@@ -234,37 +228,4 @@ void get_packets(
     pfd.events = POLLIN;
 
     recv_loop(&pfd, sockfd, wrt_fp, res_fp);
-}
-
-
-/**
- * @brief 
- *
- * @param token
- * @param value
- * @param 
- */
-static void eval_config_item(
-                             char const          *token,
-                             char const          *value, 
-                             struct arg_configer *arg_conf
-                            ) 
-{
-    if (!strcmp(token, "port")) {
-        strcpy(arg_conf->port, value); 
-        printf("arg_conf->port: %s\n", arg_conf->port);
-        return;
-    }
-
-    if (!strcmp(token, "output")) {
-        strcpy(arg_conf->output, value);
-        printf("arg_conf->output: %s\n", arg_conf->output);
-        return;
-    }
-
-    if (!strcmp(token, "log_file")) {
-        strcpy(arg_conf->log_file, value);
-        printf("arg_conf->log_file: %s\n", arg_conf->log_file);
-        return;
-    }
 }

@@ -1,11 +1,5 @@
 #include "boss_server.h"
 
-struct arg_configer{
-    char dest_ip[IP_CHAR_MAX];
-    char dest_port[PORT_MAX_CHAR];
-    char port[PORT_MAX_CHAR];
-};
-
 static struct option long_options[] = {
     {"recv_port", required_argument, NULL, 'A'},
     {"dest_port", required_argument, NULL, 'B'},
@@ -17,12 +11,6 @@ static void sigchld_handler(int s);
 static struct sigaction sig_init();
 
 static void accept_loop(int sockfd, pool_t* pl); 
-
-static void eval_config_item(
-                             char const          *token,
-                             char const          *value, 
-                             struct arg_configer *arg_conf
-                            );
 
 static FILE *log_fp; /* error logger fp */
 
@@ -212,39 +200,6 @@ static void accept_loop(int sockfd, pool_t* pl)
         rx_args->poll_timeout = 100;
         ret = pthread_create(&t_id, NULL, &rx_chain, rx_args);
         LOG_ASSERT(log_fp, LL_ERROR, ret==0);
-    }
-}
-
-/**
- * @brief sets checks argument variable key and 
- * sets argument var config struct
- *
- * @param token[in]
- * @param value[in]
- * @param arg_conf[out]
- */
-static void eval_config_item(
-                             char const *token,
-                             char const *value, 
-                             struct arg_configer *arg_conf
-                            )
-{
-    if (!strcmp(token, "port")) {
-        strcpy(arg_conf->port, value); 
-        printf("arg_conf->port: %s\n", arg_conf->port);
-        return;
-    }
-
-    if (!strcmp(token, "dest_port")) {
-        strcpy(arg_conf->dest_port, value);
-        printf("arg_conf->output: %s\n", arg_conf->dest_port);
-        return;
-    }
-
-    if (!strcmp(token, "dest_ip")) {
-        strcpy(arg_conf->dest_ip, value);
-        printf("arg_conf->log_file: %s\n", arg_conf->dest_ip);
-        return;
     }
 }
 
