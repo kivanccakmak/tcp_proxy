@@ -28,8 +28,10 @@
 #include <linux/if_ether.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+
 #include "../commons/network/network.h"
 #include "../commons/logger/logger.h"
+#include "../commons/argv_reader/argv_read.h"
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
@@ -43,6 +45,8 @@
 #define PATH_MAX 2048
 #define PORT_MAX_CHAR 50
 #define IP_CHAR_MAX 512
+
+#define TX_PROXY_ARGV_NUM 4
 
 #define TX_PROXY_LOG "tx_proxy.log"
 

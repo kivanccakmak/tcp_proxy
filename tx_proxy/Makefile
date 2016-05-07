@@ -3,12 +3,10 @@ GCC = gcc
 TARGET = proxy_tx
 # to run with config file
 
-TARGET_ARGS = proxy_tx_args
-# to run with argument variables
-
 SRC = split.c 
 
-DEP = ../commons/network/network.c
+DEP += ../commons/network/network.c \
+	   ../commons/argv_reader/argv_read.c \
 
 LIBS += -lnetfilter_queue \
         -lnfnetlink \
@@ -21,8 +19,6 @@ default: all
 all: $(TARGET)
 
 $(TARGET): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig $(CFLAGS) -DCONF_ENABLE
-$(TARGET_ARGS): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(LIBS) $(CFLAGS)
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig $(CFLAGS)
 clean:
-	rm -rf $(TARGET) $(TARGET_ARGS)
+	rm -rf $(TARGET)
