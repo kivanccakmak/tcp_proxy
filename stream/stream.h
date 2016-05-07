@@ -26,12 +26,4 @@
 
 #define STREAM_LOG "stream.log"
 
-struct arg_configer{
-    char ip_addr[IP_CHAR_MAX];
-    char port[PORT_MAX_CHAR];
-    char fname[PATH_MAX];
-};
-
-
-
 #endif
