@@ -68,7 +68,7 @@ int main(int argc, char **argv)
             printf("no configuration for receive\n");
             return -1;
         }
-    }
+    } else { printf("wrong usage\n"); return -1; }
 
     port = get_argv((char *) "recv_port", arg_vals, RECEIVE_ARGV_NUM-1);
     LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);

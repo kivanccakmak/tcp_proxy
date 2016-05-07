@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
             ret = config_reader(arg_vals, setting, STREAM_ARGV_NUM-1);
             LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         }
-    }
+    } else {printf("wrong usage\n"); return -1; }
 
     ip_addr = get_argv((char *) "dest_ip", arg_vals, STREAM_ARGV_NUM-1);
     LOG_ASSERT(log_fp, LL_ERROR, ip_addr!=NULL);
@@ -65,6 +65,8 @@ int main(int argc, char *argv[])
     LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
     fname = get_argv((char *) "file_name", arg_vals, STREAM_ARGV_NUM-1);
     LOG_ASSERT(log_fp, LL_ERROR, fname!=NULL);
+
+    printf("dest -> %s:%s, file_name:%s\n", ip_addr, port, fname);
 
     fp = fopen(fname, "r");
     LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);

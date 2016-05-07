@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
             ret = config_reader(arg_vals, setting, TX_PROXY_ARGV_NUM-1);
             LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         }
-    }
+    } else { printf("wrong usage\n"); return -1; }
 
     dest_ip = get_argv((char *) "rx_proxy_ip", arg_vals, TX_PROXY_ARGV_NUM-1);
     LOG_ASSERT(log_fp, LL_ERROR, dest_ip!=NULL);
