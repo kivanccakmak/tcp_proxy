@@ -3,7 +3,7 @@
 static void recv_loop(
                       struct pollfd *pfd, 
                       int           sockfd, 
-                      FILE          *recv_fp,
+                      FILE          *wrt_fp,
                       FILE          *res_fp
                      );
 
@@ -34,9 +34,9 @@ static struct option long_options[] = {
 #ifdef RECV
 int main(int argc, char **argv) 
 {
-    const char *port, *output, *log_file; /* expected argvs              */
-    FILE *recv_fp, *res_fp;              /*  recv_fp: data getter fp     */
-    int i = 0, ret;                     /*   res_fp:  data amount logger */
+    const char *port, *output, *log_file;  /* expected argvs             */
+    FILE *wrt_fp, *res_fp;                /*  wrt_fp: data writer fp     */
+    int i = 0, ret;                      /*   res_fp: data amount logger */
 
     log_fp = fopen(RECV_LOG, "w");
     if (log_fp == NULL) {
@@ -55,16 +55,16 @@ int main(int argc, char **argv)
         char *config_file = "../network.conf";
         config_t cfg;
         config_init(&cfg);
+        config_setting_t *setting;
         if (!config_read_file(&cfg, config_file)) {
             printf("\n%s:%d - %s", config_error_file(&cfg),
                     config_error_line(&cfg), config_error_text(&cfg));
             config_destroy(&cfg);
             return -1;
         }
-        config_setting_t *setting;
         setting = config_lookup(&cfg, "dest");
         if (setting != NULL) {
-            ret = config_reader(arg_vals, setting, RECEIVE_ARGV_NUM - 1);
+            ret = config_reader(arg_vals, setting, RECEIVE_ARGV_NUM-1);
             LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         } else {
             printf("no configuration for receive\n");
@@ -79,13 +79,13 @@ int main(int argc, char **argv)
     log_file = get_argv((char *) "log", arg_vals, RECEIVE_ARGV_NUM-1);
     LOG_ASSERT(log_fp, LL_ERROR, log_file!=NULL);
 
-    recv_fp = fopen(output, "w");
-    LOG_ASSERT(log_fp, LL_ERROR, recv_fp!=NULL);
+    wrt_fp = fopen(output, "w");
+    LOG_ASSERT(log_fp, LL_ERROR, wrt_fp!=NULL);
     res_fp = fopen(log_file, "w");
     LOG_ASSERT(log_fp, LL_ERROR, res_fp!=NULL);
 
     printf("port:%s, output:%s, log_file:%s\n", port, output, log_file);
-    get_packets((char *)port, recv_fp, res_fp);
+    get_packets((char *)port, wrt_fp, res_fp);
     return 0;
 }
 #endif
@@ -142,7 +142,7 @@ static int sock_init(
 static void recv_loop(
                       struct pollfd *pfd, 
                       int           sockfd, 
-                      FILE          *recv_fp,
+                      FILE          *wrt_fp,
                       FILE          *res_fp
                      )
 {
@@ -175,9 +175,9 @@ static void recv_loop(
                     t_diff = ((float) (t2 - t1) / 1000000) * 1000;
                     sprintf(log_str, "diff: %f bytes: %d\n",
                             t_diff, total);
-                    fprintf(recv_fp, "%s", buffer);
+                    fprintf(wrt_fp, "%s", buffer);
                     fprintf(res_fp, "%s", log_str);
-                    fflush(recv_fp);
+                    fflush(wrt_fp);
                     fflush(res_fp);
                 }
             }
@@ -193,12 +193,12 @@ CLOSE_CONN:
         fprintf(res_fp, "%s", log_str);
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
-                fprintf(recv_fp, "%c", buffer[i]);
-                fflush(recv_fp);
+                fprintf(wrt_fp, "%c", buffer[i]);
+                fflush(wrt_fp);
             }
         }
     }
-    fclose(recv_fp);
+    fclose(wrt_fp);
     fclose(res_fp);
 }
 
@@ -212,7 +212,7 @@ CLOSE_CONN:
  */
 void get_packets(
                  char *port, 
-                 FILE *recv_fp,
+                 FILE *wrt_fp,
                  FILE *res_fp
                 ) 
 { 
@@ -236,7 +236,7 @@ void get_packets(
     pfd.fd = sockfd;
     pfd.events = POLLIN;
 
-    recv_loop(&pfd, sockfd, recv_fp, res_fp);
+    recv_loop(&pfd, sockfd, wrt_fp, res_fp);
 }
 
 

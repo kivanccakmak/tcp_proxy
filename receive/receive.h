@@ -23,7 +23,9 @@
 
 #define PATH_MAX 2048
 #define PORT_MAX_CHAR 50
+
 #define RECEIVE_ARGV_NUM 4
+
 #define RECV_LOG "recv.log"
 
 struct arg_configer{
