@@ -52,8 +52,35 @@ static void example_usage()
     printf("./argv_read --key1=value1 --key2=value2\n"); 
 }
 
+
 /**
- * @brief 
+ * @brief
+ *
+ * @param argnum
+ * @param
+ *
+ * @return
+ */
+arg_val_t** init_arg_vals(
+                          int           argnum,
+                          struct option *long_options
+                         )
+{
+    int i = 0;
+    arg_val_t **arg_vals =\
+            (arg_val_t **) malloc(sizeof(arg_val_t*) * argnum);
+
+    for (i = 0; i < argnum; i++) {
+        arg_vals[i] = (arg_val_t *) malloc(sizeof(arg_val_t));
+        arg_vals[i]->key = (const char *) long_options[i].name;
+    }
+
+    return arg_vals;
+}
+
+
+/**
+ * @brief
  *
  * @param argv_vals
  * @param long_options
@@ -92,6 +119,38 @@ int argv_reader(
     return 0;
 } 
 
+
+/**
+ * @brief
+ *
+ * @param arg_vals
+ * @param setting
+ * @param
+ *
+ * @return
+ */
+int config_reader(
+                  arg_val_t         **arg_vals,
+                  config_setting_t  *setting,
+                  int               argc
+                 )
+{
+    int i = 0, ret;
+
+    if (setting == NULL)
+        return -1;
+
+    for (i = 0; i < argc; i++) {
+        ret = config_setting_lookup_string(setting,
+                (const char*) arg_vals[i]->key, &arg_vals[i]->val);
+
+        if (!ret)
+            return -1;
+    }
+
+    return 0;
+}
+
 /**
  * @brief 
  *
@@ -110,7 +169,21 @@ char* get_argv(
     int i = 0;
     for (i = 0; i < argc; i++) {
         if (!strcmp(argv_vals[i]->key, (char*) ch))
-            return argv_vals[i]->val;
+            return (char*) argv_vals[i]->val;
     }
     return NULL;
+}
+
+void print_argvs(
+                 arg_val_t **arg_vals,
+                 int argnum
+                )
+{
+    int i = 0;
+
+    for (i = 0; i < argnum; i++) {
+        printf("arg_vals[%d]->key: %s\n", i, arg_vals[i]->key);
+        printf("arg_vals[%d]->val: %s\n", i, arg_vals[i]->val);
+    }
+
 }

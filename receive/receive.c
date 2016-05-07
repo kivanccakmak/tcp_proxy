@@ -3,7 +3,7 @@
 static void recv_loop(
                       struct pollfd *pfd, 
                       int           sockfd, 
-                      FILE          *fp, 
+                      FILE          *recv_fp,
                       FILE          *res_fp
                      );
 
@@ -19,100 +19,73 @@ static const int num_options = 3;
 
 static void eval_config_item(
                              char const          *token,
-                             char const          *value, 
+                             char const          *value,
                              struct arg_configer *arg_conf
                             ); 
 
-static FILE *log_fp;
+static FILE *log_fp; /* error logger fp */
+
+static struct option long_options[] = {
+    {"recv_port", required_argument, NULL, 'A'},
+    {"out", required_argument, NULL, 'B'},
+    {"log", required_argument, NULL, 'C'}
+};
 
 #ifdef RECV
 int main(int argc, char **argv) 
 {
-    const char *port, *output, *log_file;
-    FILE *fp, *res_fp;
-    int i = 0, ret;
+    const char *port, *output, *log_file; /* expected argvs              */
+    FILE *recv_fp, *res_fp;              /*  recv_fp: data getter fp     */
+    int i = 0, ret;                     /*   res_fp:  data amount logger */
 
     log_fp = fopen(RECV_LOG, "w");
     if (log_fp == NULL) {
         perror("logfp: ");
         exit(1);
     }
-    
-    #ifdef ARGV_ENABLE
-    if (argc == 4) {
-        struct option long_options[] = {
-            {"port", required_argument, NULL, 'A'},
-            {"output", required_argument, NULL, 'B'},
-            {"log_file", required_argument, NULL, 'C'}
-        };
 
-        arg_val_t **argv_vals = \
-            (arg_val_t **) malloc(sizeof(arg_val_t*) * (argc - 1));
+    arg_val_t **arg_vals = init_arg_vals(
+            (int) RECEIVE_ARGV_NUM-1, long_options);
 
-        for (i = 0; i < argc - 1; i++)
-            argv_vals[i] = (arg_val_t *) malloc(sizeof(arg_val_t));
-
-        ret = argv_reader(argv_vals,
-                long_options, argv, argc);
-
-        port = get_argv((char *) "port", argv_vals, argc-1);
-        LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
-
-        output = get_argv((char *) "output", argv_vals, argc-1);
-        LOG_ASSERT(log_fp, LL_ERROR, output!=NULL);
-
-        log_file = get_argv((char *) "log_file", argv_vals, argc-1);
-        LOG_ASSERT(log_fp, LL_ERROR, log_file!=NULL);
-
-    }
-    #endif
-
-    #ifdef CONF_ENABLE
-    if (argc == 1) {
-        config_t cfg;
-        config_setting_t *setting;
+    if (argc == RECEIVE_ARGV_NUM) { // running via command argvs
+        ret = argv_reader(arg_vals,
+                long_options, argv, (int) RECEIVE_ARGV_NUM);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    } else if (argc == 1) {        // running via config file
         char *config_file = "../network.conf";
+        config_t cfg;
         config_init(&cfg);
         if (!config_read_file(&cfg, config_file)) {
-            printf("\n%s:%d - %s", config_error_file(&cfg), 
+            printf("\n%s:%d - %s", config_error_file(&cfg),
                     config_error_line(&cfg), config_error_text(&cfg));
             config_destroy(&cfg);
             return -1;
         }
+        config_setting_t *setting;
         setting = config_lookup(&cfg, "dest");
         if (setting != NULL) {
-            if (config_setting_lookup_string(setting, "recv_port", &port)) {
-                printf("\n recv_port: %s\n", port);
-            } else {
-                printf("receiving port is not configured\n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "out", &output)) {
-                printf("\n output: %s\n", output);
-            } else {
-                printf("output file is not configured \n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "log", &log_file)) {
-                printf("\n log file: %s\n", log_file);
-            } else {
-                printf("log file is not configured \n");
-                return -1;
-            }
+            ret = config_reader(arg_vals, setting, RECEIVE_ARGV_NUM - 1);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         } else {
             printf("no configuration for receive\n");
             return -1;
         }
     }
-    #endif
 
-    fp = fopen(output, "w");
-    LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);
+    port = get_argv((char *) "recv_port", arg_vals, RECEIVE_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
+    output = get_argv((char *) "out", arg_vals, RECEIVE_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, output!=NULL);
+    log_file = get_argv((char *) "log", arg_vals, RECEIVE_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, log_file!=NULL);
 
+    recv_fp = fopen(output, "w");
+    LOG_ASSERT(log_fp, LL_ERROR, recv_fp!=NULL);
     res_fp = fopen(log_file, "w");
     LOG_ASSERT(log_fp, LL_ERROR, res_fp!=NULL);
 
-    get_packets((char *)port, fp, res_fp);
+    printf("port:%s, output:%s, log_file:%s\n", port, output, log_file);
+    get_packets((char *)port, recv_fp, res_fp);
     return 0;
 }
 #endif
@@ -169,7 +142,7 @@ static int sock_init(
 static void recv_loop(
                       struct pollfd *pfd, 
                       int           sockfd, 
-                      FILE          *fp, 
+                      FILE          *recv_fp,
                       FILE          *res_fp
                      )
 {
@@ -202,9 +175,9 @@ static void recv_loop(
                     t_diff = ((float) (t2 - t1) / 1000000) * 1000;
                     sprintf(log_str, "diff: %f bytes: %d\n",
                             t_diff, total);
-                    fprintf(fp, "%s", buffer);
+                    fprintf(recv_fp, "%s", buffer);
                     fprintf(res_fp, "%s", log_str);
-                    fflush(fp);
+                    fflush(recv_fp);
                     fflush(res_fp);
                 }
             }
@@ -220,12 +193,13 @@ CLOSE_CONN:
         fprintf(res_fp, "%s", log_str);
         for (i = 0; i < recv_count; i++) {
             if (buffer[i] != EOF) {
-                fprintf(fp, "%c", buffer[i]);
-                fflush(fp);
+                fprintf(recv_fp, "%c", buffer[i]);
+                fflush(recv_fp);
             }
         }
     }
-    fclose(fp);
+    fclose(recv_fp);
+    fclose(res_fp);
 }
 
 /**
@@ -238,7 +212,7 @@ CLOSE_CONN:
  */
 void get_packets(
                  char *port, 
-                 FILE *fp, 
+                 FILE *recv_fp,
                  FILE *res_fp
                 ) 
 { 
@@ -262,7 +236,7 @@ void get_packets(
     pfd.fd = sockfd;
     pfd.events = POLLIN;
 
-    recv_loop(&pfd, sockfd, fp, res_fp);
+    recv_loop(&pfd, sockfd, recv_fp, res_fp);
 }
 
 
