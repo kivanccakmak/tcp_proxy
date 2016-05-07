@@ -2,9 +2,6 @@ GCC = gcc
 
 TARGET = proxy_rx 
 # to run with config file
-#
-TARGET_ARGS = proxy_rx_args  
-# to run with argument variables
 
 SRC = boss_server.c
 
@@ -12,6 +9,7 @@ DEP += forward.c \
        link_receptor.c \
        libpqueue/pqueue.c \
        ../commons/network/network.c \
+	   ../commons/argv_reader/argv_read.c \
 
 LIBS += -lpthread \
         -lm \
@@ -25,11 +23,8 @@ default: all
 all: $(TARGET)
 
 $(TARGET): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig $(CFLAGS) -DCONF_ENABLE
-
-$(TARGET_ARGS): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET_ARGS) $(LIBS) $(CFLAGS) 
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig $(CFLAGS)
 
 clean:
-	rm -rf $(TARGET_ARGS) $(TARGET) $(DBG_TARGET) $(LOG)
+	rm -rf $(TARGET) $(LOG)
 

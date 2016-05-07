@@ -7,7 +7,7 @@ struct arg_configer{
 };
 
 static struct option long_options[] = {
-    {"port", required_argument, NULL, 'A'},
+    {"recv_port", required_argument, NULL, 'A'},
     {"dest_port", required_argument, NULL, 'B'},
     {"dest_ip", required_argument, NULL, 'C'}
 };
@@ -24,51 +24,38 @@ static void eval_config_item(
                              struct arg_configer *arg_conf
                             );
 
-static const int num_options = 3;
-
-static FILE *log_fp;
+static FILE *log_fp; /* error logger fp */
 
 #ifdef RX_PROXY
 int main(int argc, char ** argv)
 {
+    const char *dest_ip, *dest_port, /*forward to dest_ip:dest_port */
+          *recv_port;               /* recv_port: accept conns from */
+
     int ret;
-    const char *dest_ip, *dest_port, *port;
+    pool_t *pl;
+    queue_args_t *que_args;
+    pthread_t que_id, serv_id;
+    que_args = (queue_args_t *) malloc(sizeof(queue_args_t));
+
+    pl = pool_init();
     log_fp = fopen(RX_PROXY_LOG, "w+");
     if (log_fp == NULL) {
         perror("fopen: ");
         exit(1);
     }
 
-    if (argc == 4) {
-        int c = 0, i, option_index = 0;
-        struct arg_configer arg_conf;
-        for(;;) {
-            c = getopt_long(argc, argv, "",
-                    long_options, &option_index);
-            if (c == -1) {
-                break;
-            }
+    arg_val_t **arg_vals = init_arg_vals(
+            (int) RX_PROXY_ARGV_NUM-1, long_options);
 
-            if (c == '?' || c == ':')
-                exit(1);
-
-            for (i = 0; i < num_options; i++) {
-                if (long_options[i].val == c) {
-                    eval_config_item(long_options[i].name,
-                            optarg, &arg_conf);
-                }
-            }
-        }
-        port = arg_conf.port;
-        dest_ip = arg_conf.dest_ip;
-        dest_port = arg_conf.dest_port;
-    }
-
-    #ifdef CONF_ENABLE
-    if (argc == 1) {
+    if (argc == RX_PROXY_ARGV_NUM) { //running via command argvs
+        ret = argv_reader(arg_vals,
+                long_options, argv, (int) RX_PROXY_ARGV_NUM);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    } else if (argc == 1) {
+        char *config_file = "../network.conf";
         config_t cfg;
         config_setting_t *setting;
-        char *config_file = "../network.conf";
         config_init(&cfg);
         if (!config_read_file(&cfg, config_file)) {
             printf("\n%s:%d - %s", config_error_file(&cfg),
@@ -78,35 +65,20 @@ int main(int argc, char ** argv)
         }
         setting = config_lookup(&cfg, "rx_proxy");
         if (setting != NULL) {
-            if (config_setting_lookup_string(setting, "recv_port", &port)) {
-                printf("\n recv_port: %s\n", port);
-            } else {
-                printf("receiving port of rx_proxy is not configured \n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "dest_port", &dest_port)) {
-                printf("\n dest_port: %s\n", dest_port);
-            } else {
-                printf("port of agnostic end destination is not configured\n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "dest_ip", &dest_ip)) {
-                printf("\n dest_ip: %s\n", dest_ip);
-            } else {
-                printf("ip address of agnostic end destination is not configured\n");
-                return -1;
-            }
+            ret = config_reader(arg_vals, setting, RX_PROXY_ARGV_NUM-1);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         }
     }
-    #endif
 
-    pool_t *pl;
-    queue_args_t *que_args;
-    pthread_t que_id, serv_id;
-    que_args = (queue_args_t *) 
-        malloc(sizeof(queue_args_t));
+    dest_ip = get_argv((char *) "dest_ip", arg_vals, RX_PROXY_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, dest_ip!=NULL);
+    dest_port = get_argv((char *) "dest_port", arg_vals, RX_PROXY_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, dest_port!=NULL);
+    recv_port = get_argv((char *) "recv_port", arg_vals, RX_PROXY_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, recv_port!=NULL);
 
-    pl = pool_init();
+    printf("dest-> %s:%s, recv_port:%s\n", dest_ip, dest_port,
+            recv_port);
 
     que_args->pl = pl;
     que_args->dest_ip = (char *) dest_ip;
@@ -117,7 +89,7 @@ int main(int argc, char ** argv)
     LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     sleep(3);
     
-    server_start((char*) port, pl);
+    server_start((char*) recv_port, pl);
     pthread_join(que_id, NULL);
     return 0;
 }
