@@ -14,86 +14,57 @@ static void eval_config_item(
 
 static FILE *log_fp;
 
+static struct option long_options[] = {
+    {"dest_ip", required_argument, NULL, 'A'},
+    {"dest_port", required_argument, NULL, 'B'},
+    {"file_name", required_argument, NULL, 'C'}
+};
+
 #ifdef STREAM
 int main(int argc, char *argv[]) 
 {
-    const char *ip_addr, *port, *fname;
-    FILE *fp;
+    const char *ip_addr, *port, *fname; /*transmit local fname
+                                        file to ip_addr:port */
     int i = 0, ret;
+    FILE *fp;                           /* to read file */
 
     log_fp = fopen(STREAM_LOG, "w");
     if (log_fp == NULL) {
         perror("fopen: ");
         exit(1);
     }
-    
-    #ifdef ARGV_ENABLE
-    if (argc == 4) {
-        struct option long_options[] = {
-            {"ip_addr", required_argument, NULL, 'A'},
-            {"port", required_argument, NULL, 'B'},
-            {"fname", required_argument, NULL, 'C'}
-        };
 
-        arg_val_t **argv_vals = \
-            (arg_val_t **) malloc(sizeof(arg_val_t*) * (argc - 1));
+    arg_val_t **arg_vals = init_arg_vals(
+            (int) STREAM_ARGV_NUM-1, long_options);
 
-        for (i = 0; i < argc - 1; i++)
-            argv_vals[i] = (arg_val_t *) malloc(sizeof(arg_val_t));
-
-        ret = argv_reader(argv_vals,
-                long_options, argv, argc);
-
-        ip_addr = get_argv((char *) "ip_addr", argv_vals, argc-1);
-        LOG_ASSERT(log_fp, LL_ERROR, ip_addr!=NULL);
-
-        port = get_argv((char *) "port", argv_vals, argc-1);
-        LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
-
-        fname = get_argv((char *) "fname", argv_vals, argc-1);
-        LOG_ASSERT(log_fp, LL_ERROR, fname!=NULL);
-    }
-    #endif
-    
-    #ifdef CONF_ENABLE
-    if (argc == 1) {
+    if (argc == STREAM_ARGV_NUM) { // running via command argvs
+        ret = argv_reader(arg_vals,
+                long_options, argv, (int) STREAM_ARGV_NUM);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    } else if (argc == 1) {       // running via config file
+        char *config_file = "../network.conf";
         config_t cfg;
         config_setting_t *setting;
-        char *config_file = "../network.conf";
         config_init(&cfg);
         if (!config_read_file(&cfg, config_file)) {
             printf("\n%s:%d - %s", config_error_file(&cfg), 
-                    config_error_line(&cfg),
-                    config_error_text(&cfg));
+                    config_error_line(&cfg), config_error_text(&cfg));
             config_destroy(&cfg);
             return -1;
         }
         setting = config_lookup(&cfg, "stream");
         if (setting != NULL) {
-            if (config_setting_lookup_string(setting, "dest_ip", &ip_addr)) {
-                printf("\n dest_ip: %s\n", ip_addr);
-            } else {
-                printf("destination ip is not configured\n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "dest_port", &port)) {
-                printf("\n dest_port: %s\n", port);
-            } else {
-                printf("destination port is not configured\n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "file_name", &fname)) {
-                printf("\n file_name: %s\n", fname);
-            } else {
-                printf("local file is not configured\n");
-                return -1;
-            }
-        } else {
-            printf("no configuration for streamer\n");
-            return -1;
+            ret = config_reader(arg_vals, setting, STREAM_ARGV_NUM-1);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         }
     }
-    #endif
+
+    ip_addr = get_argv((char *) "dest_ip", arg_vals, STREAM_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, ip_addr!=NULL);
+    port = get_argv((char *) "dest_port", arg_vals, STREAM_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
+    fname = get_argv((char *) "file_name", arg_vals, STREAM_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, fname!=NULL);
 
     fp = fopen(fname, "r");
     LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);

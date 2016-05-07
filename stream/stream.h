@@ -22,6 +22,8 @@
 #define IP_CHAR_MAX 512 
 #define PORT_MAX_CHAR 50
 
+#define STREAM_ARGV_NUM 4 
+
 #define STREAM_LOG "stream.log"
 
 struct arg_configer{
