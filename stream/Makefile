@@ -5,7 +5,7 @@ TARGET = stream
 SRC = stream.c
 
 DEP += file_read/file_read.c              \
-	   ../commons/argv_reader/argv_read.c \
+       ../commons/argv_reader/argv_read.c \
 
 CFLAGS = -DSTREAM
 
