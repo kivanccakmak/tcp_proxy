@@ -5,7 +5,7 @@ TARGET = proxy_tx
 SRC = split.c 
 
 DEP += ../commons/network/network.c       \
-	   ../commons/argv_reader/argv_read.c \
+       ../commons/argv_reader/argv_read.c \
 
 LIBS += -lnetfilter_queue \
         -lnfnetlink       \
