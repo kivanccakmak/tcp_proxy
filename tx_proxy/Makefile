@@ -1,7 +1,6 @@
 GCC = gcc
 
 TARGET = proxy_tx
-# to run with config file
 
 SRC = split.c 
 
@@ -20,5 +19,6 @@ all: $(TARGET)
 
 $(TARGET): $(SRC) $(DEP)
 	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(LIBS) -lconfig $(CFLAGS)
+
 clean:
 	rm -rf $(TARGET)

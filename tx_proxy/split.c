@@ -44,8 +44,8 @@ static struct cb_cntrl_args* set_controller_args(
                                                 ); 
 
 static void set_link(
-                     char *dest_ip, 
-                     char *dest_port,
+                     char   *dest_ip, 
+                     char   *dest_port,
                      struct link *tcp_link
                     );
 
@@ -55,7 +55,7 @@ static void *tx_chain(void *args);
 
 static void split_loop(int sockfd, proxy_buff *buff);
 
-static FILE *log_fp;
+static FILE *log_fp; /* error logger fp */
 
 #ifdef TX_PROXY
 int main(int argc, char *argv[])

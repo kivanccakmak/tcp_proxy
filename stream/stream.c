@@ -1,18 +1,18 @@
 #include "stream.h"
 
+static struct option long_options[] = {
+    {"dest_ip", required_argument, NULL, 'A'},
+    {"dest_port", required_argument, NULL, 'B'},
+    {"file_name", required_argument, NULL, 'C'}
+};
+
 static void stream(
                    char *ip_addr, 
                    char *port, 
                    FILE *fp
                   );
 
-static FILE *log_fp; /* errors logger fp */
-
-static struct option long_options[] = {
-    {"dest_ip", required_argument, NULL, 'A'},
-    {"dest_port", required_argument, NULL, 'B'},
-    {"file_name", required_argument, NULL, 'C'}
-};
+static FILE *log_fp; /* error logger fp */
 
 #ifdef STREAM
 int main(int argc, char *argv[]) 

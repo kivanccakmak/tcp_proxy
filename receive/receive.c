@@ -1,5 +1,11 @@
 #include "receive.h"
 
+static struct option long_options[] = {
+    {"recv_port", required_argument, NULL, 'A'},
+    {"out", required_argument, NULL, 'B'},
+    {"log", required_argument, NULL, 'C'}
+};
+
 static void recv_loop(
                       struct pollfd *pfd, 
                       int           sockfd, 
@@ -16,12 +22,6 @@ static void get_packets(
 static int sock_init(char *port);
 
 static FILE *log_fp; /* error logger fp */
-
-static struct option long_options[] = {
-    {"recv_port", required_argument, NULL, 'A'},
-    {"out", required_argument, NULL, 'B'},
-    {"log", required_argument, NULL, 'C'}
-};
 
 #ifdef RECV
 int main(int argc, char **argv) 
