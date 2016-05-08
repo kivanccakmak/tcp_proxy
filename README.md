@@ -62,7 +62,7 @@ First, connect to all devices(via ssh or sth. else) Consequently, run binaries i
 
 1. ***./receive***
 2. ***./rx\_proxy***
-3. ***sudo tx\_proxy***
+3. ***sudo ./tx\_proxy***
 4. ***./stream***
 
 ## working principles
