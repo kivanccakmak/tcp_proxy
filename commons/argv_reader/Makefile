@@ -1,7 +1,7 @@
 GCC = gcc
 
-DBG_FLAG += -g \
-			-Wall \
+DBG_FLAG += -g    \
+            -Wall \
 
 SRC = argv_read.c
 
