@@ -1,19 +1,26 @@
 #include "stream.h"
 
-static void stream(char *ip_addr, char *port, FILE *fp);
+static struct option long_options[] = {
+    {"dest_ip", required_argument, NULL, 'A'},
+    {"dest_port", required_argument, NULL, 'B'},
+    {"file_name", required_argument, NULL, 'C'}
+};
 
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf); 
+static void stream(
+                   char *ip_addr, 
+                   char *port, 
+                   FILE *fp
+                  );
 
-static int num_options = 3;
-
-static FILE *log_fp;
+static FILE *log_fp; /* error logger fp */
 
 #ifdef STREAM
 int main(int argc, char *argv[]) 
 {
-    const char *ip_addr, *port, *fname;
-    FILE *fp;
+    const char *ip_addr, *port, *fname; /*transmit local fname
+                                        file to ip_addr:port */
+    int i = 0, ret;
+    FILE *fp;                           /* to read file */
 
     log_fp = fopen(STREAM_LOG, "w");
     if (log_fp == NULL) {
@@ -21,72 +28,41 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    if (argc == 4) {
-        int i = 0, c = 0, option_index = 0;
-        struct arg_configer arg_conf;
-        for (;;) {
-            c = getopt_long(argc, argv, "",
-                    long_options, &option_index);
+    arg_val_t **arg_vals = init_arg_vals(
+            (int) STREAM_ARGV_NUM-1, long_options);
 
-            if (c == -1)
-                break;
-
-            if (c == '?' || c == ':')
-                exit(1);
-
-            for (i = 0; i < num_options; i++) {
-                if (long_options[i].val == c) {
-                    eval_config_item(long_options[i].name,
-                            optarg, &arg_conf);
-                }
-            }
-        }
-        ip_addr = arg_conf.ip_addr;
-        port = arg_conf.port;
-        fname = arg_conf.fname;
-    }
-    
-    #ifdef CONF_ENABLE
-    if (argc == 1) {
+    if (argc == STREAM_ARGV_NUM) { // running via command argvs
+        ret = argv_reader(arg_vals,
+                long_options, argv, (int) STREAM_ARGV_NUM);
+        LOG_ASSERT(log_fp, LL_ERROR, ret==0);
+    } else if (argc == 1) {       // running via config file
+        char *config_file = "../network.conf";
         config_t cfg;
         config_setting_t *setting;
-        char *config_file = "../network.conf";
         config_init(&cfg);
         if (!config_read_file(&cfg, config_file)) {
             printf("\n%s:%d - %s", config_error_file(&cfg), 
-                    config_error_line(&cfg),
-                    config_error_text(&cfg));
+                    config_error_line(&cfg), config_error_text(&cfg));
             config_destroy(&cfg);
             return -1;
         }
         setting = config_lookup(&cfg, "stream");
         if (setting != NULL) {
-            if (config_setting_lookup_string(setting, "dest_ip", &ip_addr)) {
-                printf("\n dest_ip: %s\n", ip_addr);
-            } else {
-                printf("destination ip is not configured\n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "dest_port", &port)) {
-                printf("\n dest_port: %s\n", port);
-            } else {
-                printf("destination port is not configured\n");
-                return -1;
-            }
-            if (config_setting_lookup_string(setting, "file_name", &fname)) {
-                printf("\n file_name: %s\n", fname);
-            } else {
-                printf("local file is not configured\n");
-                return -1;
-            }
-        } else {
-            printf("no configuration for streamer\n");
-            return -1;
+            ret = config_reader(arg_vals, setting, STREAM_ARGV_NUM-1);
+            LOG_ASSERT(log_fp, LL_ERROR, ret==0);
         }
-    }
-    #endif
+    } else {printf("wrong usage\n"); return -1; }
 
-    fp = fopen(fname, "w");
+    ip_addr = get_argv((char *) "dest_ip", arg_vals, STREAM_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, ip_addr!=NULL);
+    port = get_argv((char *) "dest_port", arg_vals, STREAM_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, port!=NULL);
+    fname = get_argv((char *) "file_name", arg_vals, STREAM_ARGV_NUM-1);
+    LOG_ASSERT(log_fp, LL_ERROR, fname!=NULL);
+
+    printf("dest -> %s:%s, file_name:%s\n", ip_addr, port, fname);
+
+    fp = fopen(fname, "r");
     LOG_ASSERT(log_fp, LL_ERROR, fp!=NULL);
 
     stream((char*) ip_addr, (char*) port, fp);
@@ -101,7 +77,11 @@ int main(int argc, char *argv[])
  * @param[in] port
  * @param[in] fp
  */
-static void stream(char *ip_addr, char *port, FILE *fp)
+static void stream(
+                   char *ip_addr, 
+                   char *port, 
+                   FILE *fp
+                  )
 { 
     int ret, sockfd;
     int byte_count = 0, temp_count = 0, capacity = 0;
@@ -146,24 +126,3 @@ static void stream(char *ip_addr, char *port, FILE *fp)
         temp_count = 0;
     }
 } 
-
-static void eval_config_item(char const *token,
-        char const *value, struct arg_configer *arg_conf) {
-    if (!strcmp(token, "ip_addr")) {
-        strcpy(arg_conf->ip_addr, value);
-        printf("arg_conf->ip_addr: %s\n", arg_conf->ip_addr);
-        return;
-    }
-
-    if (!strcmp(token, "port")) {
-        strcpy(arg_conf->port, value);
-        printf("arg_conf->port: %s\n", arg_conf->port);
-        return;
-    }
-
-    if (!strcmp(token, "fname")) {
-        strcpy(arg_conf->fname, value);
-        printf("arg_conf->log_file: %s\n", arg_conf->fname);
-        return;
-    }
-}

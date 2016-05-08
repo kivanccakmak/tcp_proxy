@@ -6,7 +6,7 @@ static void forward_data(fqueue_t* fq, int pack_cnt);
 
 static void forward_loop(pool_t *pl, fqueue_t *fq);
 
-static FILE *log_fp;
+static FILE *log_fp; /* error logger fp */
 
 /**
  * @brief enabled by boss_server module. 

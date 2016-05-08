@@ -21,16 +21,20 @@
 #include "time.h"
 
 #include "forward.h"
-#include "../commons/network/network.h"
-#include "../commons/logger/logger.h"
 #include "link_receptor.h"
 #include "libpqueue/pqueue.h"
+
+#include "../commons/network/network.h"
+#include "../commons/logger/logger.h"
+#include "../commons/argv_reader/argv_read.h"
 
 #define CLOSE_CONN -1
 
 #define PATH_MAX 2048
 #define PORT_MAX_CHAR 50
 #define IP_CHAR_MAX 512
+
+#define RX_PROXY_ARGV_NUM 4
 
 #define RX_PROXY_LOG "rx_proxy.log"
 

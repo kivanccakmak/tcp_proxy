@@ -27,8 +27,12 @@ int get_file_size(FILE *fp)
  * @param[in] end_byte
  * @param[out] buffer
  */
-void read_file(FILE *fp, int start_byte, 
-        int end_byte, char *buffer)
+void read_file(
+               FILE *fp, 
+               int start_byte, 
+               int end_byte, 
+               char *buffer
+              )
 {
     size_t flen;
     size_t r_size = 1;

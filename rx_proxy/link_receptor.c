@@ -1,7 +1,6 @@
 #include "link_receptor.h"
 
-static void add2queue(pool_t *pl,
-        unsigned char *raw_packet);
+static void add2queue(pool_t *pl, unsigned char *raw_packet);
 
 /**
  * @brief 

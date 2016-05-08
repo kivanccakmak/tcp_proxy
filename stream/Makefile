@@ -1,14 +1,11 @@
 GCC = gcc
 
 TARGET = stream
-# to run with config file
-
-TARGET_ARGS = stream_args
-# to run with argument variables
 
 SRC = stream.c
 
-DEP = file_read/file_read.c
+DEP += file_read/file_read.c              \
+       ../commons/argv_reader/argv_read.c \
 
 CFLAGS = -DSTREAM
 
@@ -17,9 +14,7 @@ default: all
 all: $(TARGET)
 
 $(TARGET): $(SRC) $(DEP)
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) -lconfig $(CFLAGS) -DCONF_ENABLE
+	$(GCC) $(SRC) $(DEP) -o $(TARGET) -lconfig $(CFLAGS)
 
-$(TARGET_ARGS): $(SRC) $(DEP) 
-	$(GCC) $(SRC) $(DEP) -o $(TARGET) $(CFLAGS)
 clean:
-	rm -f $(TARGET) $(TARGET_ARGS)
+	rm -f $(TARGET)
