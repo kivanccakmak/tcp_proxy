@@ -1,7 +1,6 @@
 GCC = gcc
 
 TARGET = proxy_rx 
-# to run with config file
 
 SRC = boss_server.c
 

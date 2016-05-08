@@ -38,14 +38,14 @@ static struct split_args* set_split_args(char *local_port);
 static void* get_payload(void *args); 
 
 static struct cb_cntrl_args* set_controller_args(
-                                                 char *dest_ip,
-                                                 char *dest_port, 
+                                                 char       *dest_ip,
+                                                 char       *dest_port,
                                                  proxy_buff *buff
                                                 ); 
 
 static void set_link(
-                     char   *dest_ip, 
-                     char   *dest_port,
+                     char        *dest_ip,
+                     char        *dest_port,
                      struct link *tcp_link
                     );
 

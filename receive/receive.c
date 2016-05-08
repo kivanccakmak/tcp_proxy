@@ -127,7 +127,7 @@ static int sock_init(char *port)
  *
  * @param[in] pfd
  * @param[in] sockfd
- * @param[in] fp
+ * @param[in] wrt_fp
  * @param[in] res_fp
  */
 static void recv_loop(
@@ -139,8 +139,7 @@ static void recv_loop(
 {
     int numbytes = 0, recv_count = 0,
         total = 0, i = 0;
-    char buffer[BLOCKSIZE];
-    char log_str[100];
+    char buffer[BLOCKSIZE], log_str[100];
     clock_t t1, t2;
     float t_diff;
 
@@ -198,7 +197,7 @@ CLOSE_CONN:
  * descriptor and enters to recv_loop
  *
  * @param[in] port
- * @param[in] fp
+ * @param[in] wrt_fp
  * @param[in] res_fp
  */
 void get_packets(
