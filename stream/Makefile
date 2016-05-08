@@ -1,7 +1,6 @@
 GCC = gcc
 
 TARGET = stream
-# to run with config file
 
 SRC = stream.c
 
