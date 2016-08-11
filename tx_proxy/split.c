@@ -27,46 +27,29 @@ static struct option long_options[] = {
     {"rx_proxy_ip", required_argument, NULL, 'C'}
 };
 
-static int nfqueue_get_syn(
-                           struct nfq_q_handle *qh,
-                           struct nfgenmsg     *nfmsg, 
-                           struct nfq_data     *nfa,
-                           void                *data
-                          );
+static int nfqueue_get_syn(struct nfq_q_handle *qh,struct nfgenmsg *nfmsg,
+        struct nfq_data *nfa, void *data);
 
 static void* queuer_loop(void __attribute__((unused)) *unused);
 
 static void* pass_payload(void *args);
 
-static struct listen_args* set_listen_args(
-                                           char *dest_ip, 
-                                           char *dest_port, 
-                                           char *local_part
-                                          );
+static struct listen_args* set_listen_args(char *dest_ip,
+        char *dest_port, char *local_part);
 
 static int set_tx_sock(char *dest_ip, char *dest_port); 
 
-static int add2buff(
-                    proxy_buff *buff, 
-                    char       *raw_buf, 
-                    int        recv_count
-                   ); 
+static int add2buff(proxy_buff *buff, char *raw_buf, int recv_count);
 
 static struct split_args* set_split_args(char *local_port);
 
 static void* get_payload(void *args); 
 
-static struct cb_cntrl_args* set_controller_args(
-                                                 char       *dest_ip,
-                                                 char       *dest_port,
-                                                 proxy_buff *buff
-                                                ); 
+static struct cb_cntrl_args* set_controller_args(char *dest_ip,
+        char *dest_port, proxy_buff *buff);
 
-static void set_link(
-                     char        *dest_ip,
-                     char        *dest_port,
-                     struct link *tcp_link
-                    );
+static void set_link(char *dest_ip, char *dest_port,
+        struct link *tcp_link);
 
 static void *run_controller(void *args);
 
@@ -288,11 +271,8 @@ CONN_CLOSE:
  * @param[in] dest_port
  * @param[out] tcp_link
  */
-static void set_link(
-                     char        *dest_ip, 
-                     char        *dest_port,
-                     struct link *tcp_link
-                    ) 
+static void set_link(char *dest_ip, char *dest_port,
+        struct link *tcp_link)
 {
     struct sockaddr_in server;
     int ret, sockfd;
@@ -332,11 +312,8 @@ static void set_link(
  *
  * @return 
  */
-static struct cb_cntrl_args* set_controller_args(
-                                                 char *dest_ip,
-                                                 char *dest_port, 
-                                                 proxy_buff *buff
-                                                ) 
+static struct cb_cntrl_args* set_controller_args(char *dest_ip,
+        char *dest_port, proxy_buff *buff)
 {
     struct cb_cntrl_args *cntrl_args = NULL;
 
@@ -581,11 +558,8 @@ CONN_CLOSE:
  *
  * return 
  */
-static int add2buff(
-                    proxy_buff *buff, 
-                    char       *raw_buf,
-                    int        recv_count
-                   )
+static int add2buff(proxy_buff *buff, char *raw_buf,
+        int recv_count)
 {
     bool extend = false;
     int ret, remained = 0, i = 0, pre_count = 0;
@@ -662,12 +636,9 @@ static int set_tx_sock(char *dest_ip, char *dest_port)
  *
  * @return 
  */
-static int nfqueue_get_syn(
-                           struct nfq_q_handle *qh,
-                           struct nfgenmsg     *nfmsg, 
-                           struct nfq_data     *nfa, 
-                           void                *data
-                          ) 
+static int nfqueue_get_syn(struct nfq_q_handle *qh,
+        struct nfgenmsg *nfmsg, struct nfq_data *nfa,
+        void *data)
 {
     printf("in get syn\n");
     unsigned char *buffer;

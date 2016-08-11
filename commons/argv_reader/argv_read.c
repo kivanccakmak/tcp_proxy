@@ -80,10 +80,8 @@ static void example_usage()
  *
  * @return
  */
-arg_val_t** init_arg_vals(
-                          int           argnum,
-                          struct option *long_options
-                         )
+arg_val_t** init_arg_vals(int argnum,
+        struct option *long_options)
 {
     int i = 0;
     arg_val_t **arg_vals =\
@@ -108,12 +106,9 @@ arg_val_t** init_arg_vals(
  *
  * @return 0 success, -1 error 
  */
-int argv_reader(
-                arg_val_t     **argv_vals, 
-                struct option *long_options, 
-                char          **argv,
-                int           argc
-               ) 
+int argv_reader(arg_val_t **argv_vals, 
+        struct option *long_options, char **argv,
+        int argc)
 {
     int c = 0, option_index = 0;
     int i = 0, count = 0;
@@ -148,11 +143,8 @@ int argv_reader(
  *
  * @return
  */
-int config_reader(
-                  arg_val_t         **arg_vals,
-                  config_setting_t  *setting,
-                  int               argc
-                 )
+int config_reader(arg_val_t **arg_vals,
+        config_setting_t *setting, int argc)
 {
     int i = 0, ret;
 
@@ -179,11 +171,7 @@ int config_reader(
  *
  * @return 
  */
-char* get_argv(
-               char ch[], 
-               arg_val_t **argv_vals, 
-               int argc
-              ) 
+char* get_argv(char ch[], arg_val_t **argv_vals, int argc)
 {
     int i = 0;
     for (i = 0; i < argc; i++) {
@@ -193,10 +181,7 @@ char* get_argv(
     return NULL;
 }
 
-void print_argvs(
-                 arg_val_t **arg_vals,
-                 int argnum
-                )
+void print_argvs(arg_val_t **arg_vals, int argnum)
 {
     int i = 0;
 

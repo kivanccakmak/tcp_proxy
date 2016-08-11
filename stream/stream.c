@@ -25,11 +25,7 @@ static struct option long_options[] = {
     {"file_name", required_argument, NULL, 'C'}
 };
 
-static void stream(
-                   char *ip_addr, 
-                   char *port, 
-                   FILE *fp
-                  );
+static void stream(char *ip_addr, char *port, FILE *fp);
 
 static FILE *log_fp; /* error logger fp */
 
@@ -96,11 +92,7 @@ int main(int argc, char *argv[])
  * @param[in] port
  * @param[in] fp
  */
-static void stream(
-                   char *ip_addr, 
-                   char *port, 
-                   FILE *fp
-                  )
+static void stream(char *ip_addr, char *port, FILE *fp)
 { 
     int ret, sockfd;
     int byte_count = 0, temp_count = 0, capacity = 0;
@@ -144,4 +136,4 @@ static void stream(
         byte_count += temp_count;
         temp_count = 0;
     }
-} 
+}

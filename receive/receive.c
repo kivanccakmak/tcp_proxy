@@ -25,18 +25,10 @@ static struct option long_options[] = {
     {"log", required_argument, NULL, 'C'}
 };
 
-static void recv_loop(
-                      struct pollfd *pfd, 
-                      int           sockfd, 
-                      FILE          *wrt_fp,
-                      FILE          *res_fp
-                     );
+static void recv_loop(struct pollfd *pfd,  int sockfd,
+        FILE *wrt_fp, FILE *res_fp);
 
-static void get_packets(
-                        char *port, 
-                        FILE *fp, 
-                        FILE *res_fp
-                       );
+static void get_packets(char *port, FILE *fp, FILE *res_fp);
 
 static int sock_init(char *port);
 
@@ -149,12 +141,8 @@ static int sock_init(char *port)
  * @param[in] wrt_fp
  * @param[in] res_fp
  */
-static void recv_loop(
-                      struct pollfd *pfd, 
-                      int           sockfd, 
-                      FILE          *wrt_fp,
-                      FILE          *res_fp
-                     )
+static void recv_loop(struct pollfd *pfd, int sockfd,
+        FILE *wrt_fp, FILE *res_fp)
 {
     int numbytes = 0, recv_count = 0,
         total = 0, i = 0;
@@ -219,11 +207,7 @@ CLOSE_CONN:
  * @param[in] wrt_fp
  * @param[in] res_fp
  */
-void get_packets(
-                 char *port, 
-                 FILE *wrt_fp,
-                 FILE *res_fp
-                ) 
+void get_packets(char *port, FILE *wrt_fp, FILE *res_fp)
 { 
     int sockfd, ret;
     struct sockaddr_storage their_addr;
