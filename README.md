@@ -54,6 +54,12 @@ Transmitter proxy should define routing rules via **iptables**.
 * `iptables -t nat -I PREROUTING -p tcp -s 192.168.2.11 -j REDIRECT --to-port 5000`
 * `iptables -t mangle -I PREROUTING -i br0 -s 192.168.2.11 -p tcp --syn -j NFQUEUE --queue-num=0`
 
+### dependencies
+
+* `sudo apt-get install libconfig++-dev`
+* `sudo apt-get install libnetfilter-queue1`
+* `sudo apt-get install libnetfilter-queue-dev`
+
 ### compile
 `make`
 
