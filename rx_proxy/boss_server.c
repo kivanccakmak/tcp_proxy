@@ -43,7 +43,6 @@ int main(int argc, char ** argv)
     pool_t *pl;
     queue_args_t *que_args;
     pthread_t que_id, serv_id;
-    que_args = (queue_args_t *) malloc(sizeof(queue_args_t));
 
     pl = pool_init();
     log_fp = fopen(RX_PROXY_LOG, "w+");
@@ -52,14 +51,12 @@ int main(int argc, char ** argv)
         exit(1);
     }
 
-    arg_val_t **arg_vals = init_arg_vals(
-            (int) RX_PROXY_ARGV_NUM-1, long_options);
-
+    arg_val_t **arg_vals = init_arg_vals((int) RX_PROXY_ARGV_NUM-1, long_options);
     if (argc == RX_PROXY_ARGV_NUM) { //running via command argvs
         ret = argv_reader(arg_vals,
                 long_options, argv, (int) RX_PROXY_ARGV_NUM);
         LOG_ASSERT(log_fp, LL_ERROR, ret==0);
-    } else if (argc == 1) {
+    } else if (argc == 1) {         // running via config file
         char *config_file = "../network.conf";
         config_t cfg;
         config_setting_t *setting;
@@ -84,15 +81,14 @@ int main(int argc, char ** argv)
     recv_port = get_argv((char *) "recv_port", arg_vals, RX_PROXY_ARGV_NUM-1);
     LOG_ASSERT(log_fp, LL_ERROR, recv_port!=NULL);
 
-    printf("dest-> %s:%s, recv_port:%s\n", dest_ip, dest_port,
-            recv_port);
+    printf("dest-> %s:%s, recv_port:%s\n", dest_ip, dest_port, recv_port);
 
+    que_args = (queue_args_t *) malloc(sizeof(queue_args_t));
     que_args->pl = pl;
     que_args->dest_ip = (char *) dest_ip;
     que_args->dest_port = (char *) dest_port;
     
-    ret = pthread_create(&que_id, NULL, &wait2forward,
-            (void*) que_args);
+    ret = pthread_create(&que_id, NULL, &wait2forward, (void*) que_args);
     LOG_ASSERT(log_fp, LL_ERROR, ret==0);
     sleep(3);
     
@@ -103,12 +99,12 @@ int main(int argc, char ** argv)
 #endif
 
 /**
- * @brief initialize packet pool 
- * struct to be used by receiver threads.
+ * @brief allocate and initialize packet pool
+ * to be used by receiver threads.
  *
- * @return 
+ * @return
  */
-pool_t* pool_init() 
+pool_t* pool_init()
 {
     pqueue_t *pq;
     pool_t *pl;
@@ -136,9 +132,8 @@ pool_t* pool_init()
 }
 
  /**
-  * @brief initializes server socket
-  * and enters connection accepting
-  * loop
+  * @brief initialize server socket and enter connection
+  * accepting loop.
   *
   * @param[in] server_port
   * @param[in] pl
@@ -182,10 +177,9 @@ void server_start(char* server_port, pool_t *pl)
 }
 
 /**
- * @brief Listens from ip_addr:port and 
- * initiates new thread whenever 
- * new TCP connection established
- * from transmitter side of proxy.
+ * @brief Listen from ip_addr:port and initiate new thread
+ * whenever new TCP connection established from transmitter
+ * side of proxy.
  *
  * @param[in] sockfd
  * @param[in] pl

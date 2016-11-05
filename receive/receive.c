@@ -38,8 +38,8 @@ static FILE *log_fp; /* error logger fp */
 int main(int argc, char **argv) 
 {
     const char *port, *output, *log_file;  /* expected argvs             */
-    FILE *wrt_fp, *res_fp;                /*  wrt_fp: data writer fp     */
-    int i = 0, ret;                      /*   res_fp: data amount logger */
+    FILE *wrt_fp, *res_fp;                 /* wrt_fp: data writer fp     */
+    int i = 0, ret;                        /* res_fp: data amount logger */
 
     log_fp = fopen(RECV_LOG, "w");
     if (log_fp == NULL) {
@@ -94,10 +94,11 @@ int main(int argc, char **argv)
 #endif
 
 /**
- * @brief sets socket file descriptor
- * to receive stream
+ * @brief set socket
  *
  * @param[in] port
+ *
+ * @return sockfd
  */
 static int sock_init(char *port)
 {
@@ -133,8 +134,7 @@ static int sock_init(char *port)
 }
 
 /**
- * @brief receives data and writes onto
- * file
+ * @brief receive data and write onto file
  *
  * @param[in] pfd
  * @param[in] sockfd
@@ -200,8 +200,7 @@ CLOSE_CONN:
 }
 
 /**
- * @brief set receiving socket file 
- * descriptor and enters to recv_loop
+ * @brief set receiver socket and enter to receive loop
  *
  * @param[in] port
  * @param[in] wrt_fp

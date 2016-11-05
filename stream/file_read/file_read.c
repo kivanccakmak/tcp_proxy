@@ -16,16 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "file_read.h"
 
 /**
  * @brief returns file size in 
  * terms of Bytes
  *
- * @param fp
+ * @param[in] fp
  *
- * @return 
+ * @return num bytes in file
  */
 int get_file_size(FILE *fp)
 {
@@ -37,21 +36,14 @@ int get_file_size(FILE *fp)
 }
 
 /**
- * @brief 
- *
- * Fills pointer input with file descriptor.
+ * @brief Fill file content to buffer.
  *
  * @param[in] fp
  * @param[in] start_byte
  * @param[in] end_byte
  * @param[out] buffer
  */
-void read_file(
-               FILE *fp, 
-               int start_byte, 
-               int end_byte, 
-               char *buffer
-              )
+void read_file(FILE *fp, int start_byte, int end_byte, char *buffer)
 {
     size_t flen;
     size_t r_size = 1;

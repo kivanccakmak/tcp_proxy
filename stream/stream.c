@@ -33,7 +33,7 @@ static FILE *log_fp; /* error logger fp */
 int main(int argc, char *argv[]) 
 {
     const char *ip_addr, *port, *fname; /*transmit local fname
-                                        file to ip_addr:port */
+                                          file to ip_addr:port */
     int i = 0, ret;
     FILE *fp;                           /* to read file */
 
@@ -85,8 +85,7 @@ int main(int argc, char *argv[])
 #endif
 
 /**
- * @brief read file and stream 
- * to ip:port node
+ * @brief read file and stream to ip:port node
  *
  * @param[in] ip_addr
  * @param[in] port
@@ -103,15 +102,14 @@ static void stream(char *ip_addr, char *port, FILE *fp)
     struct sockaddr_in server;
     server.sin_addr.s_addr = inet_addr(ip_addr);
     server.sin_family = AF_INET;
-    server.sin_port = htons( atoi(port) );
+    server.sin_port = htons(atoi(port));
 
     printf("socket initializing ...\n");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     LOG_ASSERT(log_fp, LL_ERROR, sockfd!=-1);
 
     printf("connecting ...\n");
-    ret = connect(sockfd, (struct sockaddr*)&server,
-            sizeof(server));
+    ret = connect(sockfd, (struct sockaddr*)&server, sizeof(server));
     LOG_ASSERT(log_fp, LL_ERROR, ret!=-1);
 
     thr_buff = (char *) malloc(BLOCKSIZE);
@@ -127,8 +125,7 @@ static void stream(char *ip_addr, char *port, FILE *fp)
             capacity = residue;
         }
         while (temp_count < capacity) {
-            amount = write(sockfd, thr_buff+temp_count, 
-                    capacity-temp_count); 
+            amount = write(sockfd, thr_buff+temp_count, capacity-temp_count);
             if (amount > 0) {
                 temp_count += amount;
             }
